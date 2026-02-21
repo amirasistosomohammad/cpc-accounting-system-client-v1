@@ -5,7 +5,7 @@ import { FaUserShield, FaPlus, FaSearch, FaEdit, FaTrash, FaEye, FaSync } from "
 import AddAdminModal from "./AddAdminModal";
 import EditAdminModal from "./EditAdminModal";
 
-const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const AdminManagement = () => {
   const { user: currentUser, token } = useAuth();

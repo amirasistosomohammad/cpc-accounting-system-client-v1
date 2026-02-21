@@ -66,7 +66,7 @@ const Login = () => {
 
           // If token exists but user is not loaded, fetch user info
           const API_BASE_URL =
-            import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+            import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
           const response = await fetch(`${API_BASE_URL}/user`, {
             headers: {
               "Content-Type": "application/json",

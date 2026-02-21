@@ -128,7 +128,7 @@ const PersonnelManagement = () => {
       // Ensure API base URL ends with /api
       const apiBase =
         (
-          import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
+          import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
         ).replace(/\/api\/?$/, "") + "/api";
 
       const response = await fetch(`${apiBase}/admin/personnel`, {
@@ -180,7 +180,7 @@ const PersonnelManagement = () => {
   const getPersonnelAvatarUrl = useCallback((person) => {
     if (!person) return null;
     if (person.avatar_path) {
-      const baseUrl = import.meta.env.VITE_LARAVEL_API;
+      const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       let cleanFilename = person.avatar_path;
       if (person.avatar_path.includes("avatars/")) {
         cleanFilename = person.avatar_path.replace("avatars/", "");
@@ -450,7 +450,7 @@ const PersonnelManagement = () => {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
+          import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
         }/admin/personnel/${person.id}`,
         {
           method: "DELETE",

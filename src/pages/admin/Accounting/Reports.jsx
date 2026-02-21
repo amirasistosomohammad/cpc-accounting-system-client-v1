@@ -14,7 +14,7 @@ import {
 import LoadingSpinner from "../../../components/admin/LoadingSpinner";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const Reports = () => {
   const { request, currentAccount } = useAuth();

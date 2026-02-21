@@ -78,7 +78,7 @@ const Settings = () => {
     setLoadingCodes(true);
     try {
       const API_BASE_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+        import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       const response = await fetch(`${API_BASE_URL}/authorization-codes`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -147,7 +147,7 @@ const Settings = () => {
       );
 
       const API_BASE_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+        import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       const url = editingCode
         ? `${API_BASE_URL}/authorization-codes/${editingCode.id}`
         : `${API_BASE_URL}/authorization-codes`;
@@ -263,7 +263,7 @@ const Settings = () => {
       showAlert.loading("Deleting Authorization Code");
 
       const API_BASE_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+        import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       const response = await fetch(
         `${API_BASE_URL}/authorization-codes/${code.id}`,
         {
@@ -391,7 +391,7 @@ const Settings = () => {
 
     try {
       const API_BASE_URL =
-        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+        import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       const requestData = {
         name: user?.name || "",
         email: user?.email || "",

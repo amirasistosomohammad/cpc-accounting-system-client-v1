@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 const AuthContext = createContext(null);
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const CURRENT_ACCOUNT_ID_KEY = "current_account_id";
 
