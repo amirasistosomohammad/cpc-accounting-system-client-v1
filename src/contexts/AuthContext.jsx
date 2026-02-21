@@ -123,8 +123,13 @@ export const AuthProvider = ({ children }) => {
   // API request helper – always sends X-Account-Id for accounting routes so COA and all accounting data load
   const request = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
+    // Always read from localStorage so we have token even before state updates (avoids Unauthenticated on first load)
     const currentToken = token || localStorage.getItem("auth_token");
-    // For /accounting/* we must send X-Account-Id or server returns 422. Use: currentAccount > first account > saved id from localStorage.
+    const isProtected = endpoint.startsWith("/accounting/") || endpoint.startsWith("/user") || endpoint === "/accounts" || endpoint.startsWith("/accounts/") || endpoint.startsWith("/profile") || endpoint.startsWith("/admin/");
+    if (isProtected && !currentToken) {
+      throw new Error("Please log in to continue.");
+    }
+    // For /accounting/* we must send X-Account-Id or server returns 422.
     const savedAccountId = localStorage.getItem(CURRENT_ACCOUNT_ID_KEY);
     const accountId =
       currentAccount?.id ??
@@ -186,8 +191,15 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           localStorage.removeItem("auth_token");
+          localStorage.removeItem(CURRENT_ACCOUNT_ID_KEY);
           setToken(null);
           setUser(null);
+          setAccounts([]);
+          setCurrentAccountState(null);
+          // Force login page so user can re-authenticate (e.g. token expired or wrong env)
+          if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+            window.location.href = "/login";
+          }
         }
         // Prefer first validation error (e.g. "Your account has been deactivated...")
         if (data.errors && typeof data.errors === "object") {
