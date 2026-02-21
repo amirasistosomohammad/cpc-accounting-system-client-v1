@@ -124,12 +124,14 @@ export const AuthProvider = ({ children }) => {
   const request = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
     const currentToken = token || localStorage.getItem("auth_token");
-    // Use currentAccount, or for /accounting/* use first account so COA etc. always load
+    // For /accounting/* we must send X-Account-Id or server returns 422. Use: currentAccount > first account > saved id from localStorage.
+    const savedAccountId = localStorage.getItem(CURRENT_ACCOUNT_ID_KEY);
     const accountId =
       currentAccount?.id ??
       (endpoint.startsWith("/accounting/") && accounts?.length > 0
         ? accounts[0].id
-        : undefined);
+        : undefined) ??
+      (endpoint.startsWith("/accounting/") && savedAccountId ? savedAccountId : undefined);
 
     const config = {
       headers: {
