@@ -5,8 +5,7 @@ import LoadingSpinner from "../../../components/admin/LoadingSpinner";
 import ActivityLogDetailsModal from "./ActivityLogDetailsModal";
 import NumberViewModal from "../../../components/admin/NumberViewModal";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
+const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const ActivityLog = () => {
   const { request } = useAuth();

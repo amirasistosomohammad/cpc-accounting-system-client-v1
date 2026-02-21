@@ -54,7 +54,7 @@ const PersonnelDetailsModal = ({ personnel, onClose }) => {
   const getPersonnelAvatarUrl = useCallback((entity) => {
     if (!entity) return null;
     if (entity.avatar_path) {
-      const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
+      const baseUrl = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
       let cleanFilename = entity.avatar_path;
       if (entity.avatar_path.includes("avatars/")) {
         cleanFilename = entity.avatar_path.replace("avatars/", "");

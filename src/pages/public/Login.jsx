@@ -4,7 +4,7 @@ import { FaUser, FaLock, FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import backgroundImage from "../../assets/background_image.png";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../contexts/AuthContext";
-import { API_BASE_URL } from "../../config/api";
+const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 import Preloader from "../../components/Preloader";
 import { showAlert, showToast } from "../../services/notificationService";
 

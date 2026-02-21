@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { API_BASE_URL } from "../config/api";
+const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const AuthContext = createContext(null);
 

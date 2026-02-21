@@ -3,7 +3,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { showToast } from "../../../services/notificationService";
 import { FaTimes, FaUserShield } from "react-icons/fa";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
+const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
 const EditAdminModal = ({ show, admin, onClose, onSuccess }) => {
   const { token } = useAuth();
