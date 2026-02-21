@@ -219,7 +219,7 @@ const AddPersonnelModal = ({ personnel, onClose, onSave }) => {
       // Ensure API base URL ends with /api
       const apiBase =
         (
-          import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
+          import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
         ).replace(/\/api\/?$/, "") + "/api";
 
       let cleanFilename = entity.avatar_path;
@@ -245,7 +245,7 @@ const AddPersonnelModal = ({ personnel, onClose, onSave }) => {
     try {
       const response = await fetch(
         `${
-          import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
+          import.meta.env.VITE_API_URL || import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api"
         }/admin/personnel?per_page=1000`,
         {
           headers: {
