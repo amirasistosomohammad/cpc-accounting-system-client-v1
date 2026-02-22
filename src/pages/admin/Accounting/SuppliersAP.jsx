@@ -20,6 +20,7 @@ import {
   FaBan,
 } from "react-icons/fa";
 import Portal from "../../../components/Portal";
+import SearchableAccountSelect from "../../../components/SearchableAccountSelect";
 import Footprint from "../../../components/Footprint";
 import LoadingSpinner from "../../../components/admin/LoadingSpinner";
 import AuthorizationCodeModal from "../../../components/AuthorizationCodeModal";
@@ -3889,22 +3890,16 @@ const BillFormModal = ({
                     >
                       Expense Account <span className="text-danger">*</span>
                     </label>
-                    <select
-                      className="form-select"
+                    <SearchableAccountSelect
+                      accounts={expenseAccounts}
                       value={form.expense_account_id}
-                      onChange={(e) =>
-                        setForm({ ...form, expense_account_id: e.target.value })
+                      onChange={(accountId) =>
+                        setForm({ ...form, expense_account_id: accountId })
                       }
                       required
                       disabled={saving}
-                    >
-                      <option value="">Select Account</option>
-                      {expenseAccounts.map((acc) => (
-                        <option key={acc.id} value={acc.id}>
-                          {acc.account_code} - {acc.account_name}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Search by code or name..."
+                    />
                   </div>
                 </div>
                 <div className="row mb-3">
@@ -4195,22 +4190,16 @@ const PaymentFormModal = ({
                       >
                         Cash Account *
                       </label>
-                      <select
-                        className="form-select"
+                      <SearchableAccountSelect
+                        accounts={cashAccounts}
                         value={form.cash_account_id}
-                        onChange={(e) =>
-                          setForm({ ...form, cash_account_id: e.target.value })
+                        onChange={(accountId) =>
+                          setForm({ ...form, cash_account_id: accountId })
                         }
                         required
                         disabled={saving}
-                      >
-                        <option value="">Select account</option>
-                        {cashAccounts.map((acc) => (
-                          <option key={acc.id} value={acc.id}>
-                            {acc.account_code} - {acc.account_name}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="Search by code or name..."
+                      />
                     </div>
                     <div className="col-12 col-md-4">
                       <label

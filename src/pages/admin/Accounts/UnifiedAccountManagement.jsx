@@ -545,11 +545,12 @@ const UnifiedAccountManagement = () => {
         body: JSON.stringify(coaForm),
       });
       if (data) {
+        setFormLoading(false);
         showToast.success("Chart of account created successfully.");
-        await fetchChartOfAccounts();
-        await fetchFinancialSummary();
         initialCoaFormRef.current = null;
         handleCloseCoaForm();
+        fetchChartOfAccounts().catch(() => {});
+        fetchFinancialSummary().catch(() => {});
       }
     } catch (err) {
       const msg = err.message || "Failed to create chart of account";
@@ -579,11 +580,12 @@ const UnifiedAccountManagement = () => {
         body: JSON.stringify(coaForm),
       });
       if (data) {
+        setFormLoading(false);
         showToast.success("Chart of account updated successfully.");
-        await fetchChartOfAccounts();
-        await fetchFinancialSummary();
         initialEditCoaFormRef.current = null;
-        await handleCloseEditCoaForm();
+        handleCloseEditCoaForm();
+        fetchChartOfAccounts().catch(() => {});
+        fetchFinancialSummary().catch(() => {});
       }
     } catch (err) {
       const msg = err.message || "Failed to update chart of account";

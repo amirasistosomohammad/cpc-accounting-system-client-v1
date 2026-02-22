@@ -3,6 +3,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { showAlert, showToast } from "../../../services/notificationService";
 import { FaFileInvoice, FaPlus, FaTrash, FaEdit, FaEye, FaSave, FaTimes } from "react-icons/fa";
 import Portal from "../../../components/Portal";
+import SearchableAccountSelect from "../../../components/SearchableAccountSelect";
 
 const JournalEntries = () => {
   const { request } = useAuth();
@@ -523,21 +524,18 @@ const JournalEntryFormModal = ({
                           {formData.lines.map((line, index) => (
                             <tr key={index}>
                               <td>
-                                <select
-                                  className={`form-select form-select-sm ${
-                                    formErrors[`line_${index}_account`] ? "is-invalid" : ""
-                                  }`}
+                                <SearchableAccountSelect
+                                  accounts={accounts}
                                   value={line.account_id}
-                                  onChange={(e) => onLineChange(index, "account_id", e.target.value)}
+                                  onChange={(accountId) =>
+                                    onLineChange(index, "account_id", accountId)
+                                  }
                                   required
-                                >
-                                  <option value="">Select Account</option>
-                                  {accounts.map((account) => (
-                                    <option key={account.id} value={account.id}>
-                                      {account.account_code} - {account.account_name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  disabled={submitting}
+                                  invalid={!!formErrors[`line_${index}_account`]}
+                                  size="sm"
+                                  placeholder="Search by code or name..."
+                                />
                                 {formErrors[`line_${index}_account`] && (
                                   <div className="invalid-feedback d-block">
                                     {formErrors[`line_${index}_account`]}

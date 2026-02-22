@@ -1710,7 +1710,7 @@ const Income = () => {
                     No Income Transactions Found
                   </h5>
                   <p
-                    className="mb-3 small"
+                    className="mb-0 small"
                     style={{ color: "var(--text-muted)" }}
                   >
                     {searchTerm ||
@@ -1720,38 +1720,6 @@ const Income = () => {
                       ? "Try adjusting your search criteria"
                       : "Start by creating your first income transaction."}
                   </p>
-                  {!searchTerm &&
-                    filterAccount === "all" &&
-                    !startDate &&
-                    !endDate && (
-                      <button
-                        className="btn btn-sm btn-success text-white"
-                        onClick={() => {
-                          resetForm();
-                          setShowForm(true);
-                        }}
-                        disabled={isActionDisabled()}
-                        style={{
-                          transition: "all 0.2s ease-in-out",
-                          borderWidth: "2px",
-                          borderRadius: "4px",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!e.target.disabled) {
-                            e.target.style.transform = "translateY(-1px)";
-                            e.target.style.boxShadow =
-                              "0 4px 8px rgba(0,0,0,0.1)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.transform = "translateY(0)";
-                          e.target.style.boxShadow = "none";
-                        }}
-                      >
-                        <FaPlus className="me-1" />
-                        Add Income
-                      </button>
-                    )}
                 </div>
               ) : (
                 <>

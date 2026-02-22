@@ -8,6 +8,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import Portal from "../../../components/Portal";
+import SearchableAccountSelect from "../../../components/SearchableAccountSelect";
 import { showAlert } from "../../../services/notificationService";
 
 const JournalEntryFormModal = ({
@@ -561,34 +562,22 @@ const JournalEntryFormModal = ({
                                 }
                               >
                                 <td>
-                                  <select
-                                    className={`form-select form-select-sm ${
-                                      formErrors[`line_${index}_account`]
-                                        ? "is-invalid"
-                                        : ""
-                                    }`}
+                                  <SearchableAccountSelect
+                                    accounts={accounts}
                                     value={line.account_id}
-                                    onChange={(e) =>
+                                    onChange={(accountId) =>
                                       onLineChange(
                                         index,
                                         "account_id",
-                                        e.target.value
+                                        accountId
                                       )
                                     }
                                     required
                                     disabled={submitting}
-                                  >
-                                    <option value="">Select Account</option>
-                                    {accounts.map((account) => (
-                                      <option
-                                        key={account.id}
-                                        value={account.id}
-                                      >
-                                        {account.account_code} -{" "}
-                                        {account.account_name}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    invalid={!!formErrors[`line_${index}_account`]}
+                                    size="sm"
+                                    placeholder="Search by code or name..."
+                                  />
                                   {formErrors[`line_${index}_account`] && (
                                     <div className="invalid-feedback d-block">
                                       {formErrors[`line_${index}_account`]}
@@ -760,31 +749,22 @@ const JournalEntryFormModal = ({
                                 <label className="line-card-label d-block">
                                   Account <span className="text-danger">*</span>
                                 </label>
-                                <select
-                                  className={`form-select form-select-sm ${
-                                    formErrors[`line_${index}_account`]
-                                      ? "is-invalid"
-                                      : ""
-                                  }`}
+                                <SearchableAccountSelect
+                                  accounts={accounts}
                                   value={line.account_id}
-                                  onChange={(e) =>
+                                  onChange={(accountId) =>
                                     onLineChange(
                                       index,
                                       "account_id",
-                                      e.target.value
+                                      accountId
                                     )
                                   }
                                   required
                                   disabled={submitting}
-                                >
-                                  <option value="">Select Account</option>
-                                  {accounts.map((account) => (
-                                    <option key={account.id} value={account.id}>
-                                      {account.account_code} -{" "}
-                                      {account.account_name}
-                                    </option>
-                                  ))}
-                                </select>
+                                  invalid={!!formErrors[`line_${index}_account`]}
+                                  size="sm"
+                                  placeholder="Search by code or name..."
+                                />
                                 {formErrors[`line_${index}_account`] && (
                                   <div className="invalid-feedback d-block">
                                     {formErrors[`line_${index}_account`]}

@@ -1055,14 +1055,9 @@ const Expenses = () => {
                 <div className="text-center py-5">
                   <div className="mb-3"><i className="fas fa-arrow-down fa-3x" style={{ color: "var(--text-muted)", opacity: 0.5 }} /></div>
                   <h5 className="mb-2" style={{ color: "var(--text-muted)" }}>No Expense Transactions Found</h5>
-                  <p className="mb-3 small" style={{ color: "var(--text-muted)" }}>
+                  <p className="mb-0 small" style={{ color: "var(--text-muted)" }}>
                     {hasActiveFilters ? "Try adjusting your search criteria" : "Start by creating your first expense transaction."}
                   </p>
-                  {!hasActiveFilters && (
-                    <button className="btn btn-sm btn-danger text-white" onClick={() => { resetForm(); setShowForm(true); }} disabled={isActionDisabled()} style={{ borderRadius: "4px" }}>
-                      <FaPlus className="me-1" /> Add Expense
-                    </button>
-                  )}
                 </div>
               ) : (
                 <>
