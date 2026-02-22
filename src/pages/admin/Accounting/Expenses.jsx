@@ -294,7 +294,7 @@ const Expenses = () => {
     try {
       // Same as Create Bill modal: fetch all active COA then filter by category (dynamic, no hardcoding).
       // This ensures custom account types with category "Expense" (e.g. "55 - haha") always appear.
-      const data = await request("/accounting/chart-of-accounts?active_only=true");
+      const data = await request("/accounting/chart-of-accounts-list?active_only=true");
       const all = Array.isArray(data) ? data : data?.data || [];
       const expenseOnly = all.filter((acc) => acc.account_type_category === "expense");
       setExpenseAccounts(expenseOnly);
@@ -331,7 +331,7 @@ const Expenses = () => {
   const fetchCashAccounts = async () => {
     try {
       const data = await request(
-        "/accounting/chart-of-accounts?active_only=true",
+        "/accounting/chart-of-accounts-list?active_only=true",
       );
       const list = Array.isArray(data) ? data : data?.data || [];
       const cash = list.filter((acc) =>

@@ -321,7 +321,7 @@ const Income = () => {
 
   const fetchIncomeAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts?category=revenue&active_only=true");
+      const data = await request("/accounting/chart-of-accounts-list?category=revenue&active_only=true");
       setIncomeAccounts(Array.isArray(data) ? data : (data?.data || []));
     } catch (error) {
       console.error("Error fetching income accounts:", error);
@@ -346,7 +346,7 @@ const Income = () => {
 
   const fetchCashAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts?active_only=true");
+      const data = await request("/accounting/chart-of-accounts-list?active_only=true");
       const list = Array.isArray(data) ? data : (data?.data || []);
       const cash = list.filter((acc) =>
         ["1010", "1020", "1030"].includes(acc.account_code)

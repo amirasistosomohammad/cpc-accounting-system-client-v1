@@ -40,7 +40,7 @@ const ChartOfAccounts = () => {
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const data = await request("/accounting/chart-of-accounts");
+      const data = await request("/accounting/chart-of-accounts-list");
       setAccounts(Array.isArray(data) ? data : (data?.data || []));
     } catch (error) {
       console.error("Error fetching accounts:", error);

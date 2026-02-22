@@ -179,7 +179,7 @@ const ClientsAR = () => {
     try {
       // Same as Journal Entries: load all active COA then filter (ensures dropdown populates)
       const data = await request(
-        "/accounting/chart-of-accounts?active_only=true",
+        "/accounting/chart-of-accounts-list?active_only=true",
       );
       const all = Array.isArray(data) ? data : data?.data || [];
       const list = all.filter((acc) => {
@@ -197,7 +197,7 @@ const ClientsAR = () => {
   const fetchCashAccounts = async () => {
     try {
       const data = await request(
-        "/accounting/chart-of-accounts?active_only=true",
+        "/accounting/chart-of-accounts-list?active_only=true",
       );
       const list = Array.isArray(data) ? data : data?.data || [];
       const cash = list.filter((acc) =>

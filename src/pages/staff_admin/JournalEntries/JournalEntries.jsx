@@ -34,7 +34,7 @@ const JournalEntries = () => {
 
   const fetchAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts?active_only=true");
+      const data = await request("/accounting/chart-of-accounts-list?active_only=true");
       setAccounts(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error("Error fetching accounts:", error);
