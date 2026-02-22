@@ -18,7 +18,7 @@ const isAccountingOrDashboardPath = (pathname) => {
 };
 
 const Layout = ({ children }) => {
-  const { user, accounts, currentAccount, setCurrentAccount, isAdmin } = useAuth();
+  const { user, accounts, currentAccount, setCurrentAccount, isAdmin, isWrongApiUrl } = useAuth();
   const location = useLocation();
   const [sidebarToggled, setSidebarToggled] = useState(false);
 

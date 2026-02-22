@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 const API_BASE_URL = import.meta.env.VITE_LARAVEL_API || "http://localhost:8000/api";
 
+// Production client must be built with VITE_LARAVEL_API = production server URL
+const isProductionHost = typeof window !== "undefined" && /\.ondigitalocean\.app$/.test(window.location.hostname);
+const isWrongApiUrl = isProductionHost && (API_BASE_URL.includes("localhost") || API_BASE_URL.startsWith("http://127.0.0.1"));
+
 const AuthContext = createContext(null);
 
 const CURRENT_ACCOUNT_ID_KEY = "current_account_id";
@@ -386,6 +390,8 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isPersonnel,
     request,
+    isWrongApiUrl: isWrongApiUrl,
+    API_BASE_URL,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
