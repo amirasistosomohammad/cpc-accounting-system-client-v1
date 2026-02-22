@@ -235,14 +235,13 @@ const UnifiedAccountManagement = () => {
     }
   }, [request, selectedAccountId, currentAccount, isAdmin]);
 
-  // Fetch chart of accounts for selected account. Use no_balance=1 first so response is fast (avoids 504 → CORS error).
+  // Fetch chart of accounts for selected account. Use fast list endpoint (raw DB, no Eloquent) to avoid 504 → CORS error.
   const fetchChartOfAccounts = useCallback(async () => {
     if (!selectedAccountId) return;
     try {
       const params = new URLSearchParams();
       params.set("active_only", "false");
-      params.set("no_balance", "1"); // Fast response so no 504; balances shown as 0 or load separately
-      const data = await request(`/accounting/chart-of-accounts?${params.toString()}`);
+      const data = await request(`/accounting/chart-of-accounts-list?${params.toString()}`);
       const list = Array.isArray(data) ? data : (data?.data || []);
       setChartOfAccounts(list);
     } catch (err) {
