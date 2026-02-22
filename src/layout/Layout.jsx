@@ -86,6 +86,21 @@ const Layout = ({ children }) => {
 
   return (
     <div className="sb-nav-fixed">
+      {isWrongApiUrl && (
+        <div
+          style={{
+            background: "#b91c1c",
+            color: "#fff",
+            padding: "10px 16px",
+            textAlign: "center",
+            fontSize: "14px",
+            fontWeight: 600,
+          }}
+          role="alert"
+        >
+          Wrong API URL: this app was built pointing to localhost. COA and other data will not load. In your build environment set VITE_LARAVEL_API=https://cpc-server-4ckzd.ondigitalocean.app/api and rebuild the client.
+        </div>
+      )}
       <Topbar onToggleSidebar={toggleSidebar} />
 
       <div id="layoutSidenav">
