@@ -143,14 +143,14 @@ export const AuthProvider = ({ children }) => {
       (endpoint.startsWith("/accounting/") && savedAccountId ? savedAccountId : undefined);
 
     const config = {
+      ...options,
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
         ...(currentToken && { Authorization: `Bearer ${currentToken}` }),
         ...(accountId != null && { "X-Account-Id": String(accountId) }),
-        ...options.headers,
+        ...(options.headers || {}),
       },
-      ...options,
     };
 
     try {
