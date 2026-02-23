@@ -466,17 +466,29 @@ const UnifiedAccountManagement = () => {
     setFormLoading(true);
     setFormErrors({});
     try {
-      const accountData = {
-        name,
-        logo: newAccountLogoPreview || undefined,
-      };
-
+      // Create account without logo first to avoid 504 (large body + logo processing triggers gateway timeout → CORS error)
       const data = await request("/accounts", {
         method: "POST",
-        body: JSON.stringify(accountData),
+        body: JSON.stringify({ name }),
       });
-      
+
       if (data?.success && data?.account) {
+        const newAccountId = data.account.id;
+        if (newAccountLogoPreview) {
+          try {
+            const logoRes = await request(`/accounts/${newAccountId}/logo`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ logo: newAccountLogoPreview }),
+            });
+            if (logoRes?.success && logoRes?.account) {
+              data.account = logoRes.account;
+            }
+          } catch (logoErr) {
+            console.warn("Account created but logo upload failed:", logoErr);
+            showToast.warning("Account created; logo upload failed. You can add the logo later.");
+          }
+        }
         showToast.success("Account created successfully.");
         await fetchBusinessAccounts();
         setCurrentAccount(data.account);
