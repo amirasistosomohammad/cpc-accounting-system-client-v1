@@ -193,7 +193,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
+        // Only force a full logout when the core /user endpoint says the token is invalid.
+        // Other 401/403 responses (e.g. from specific actions like logo upload) should not kick users out.
+        const shouldForceLogout =
+          (response.status === 401 || response.status === 403) &&
+          (endpoint === "/user" || endpoint === "/profile");
+        if (shouldForceLogout) {
           localStorage.removeItem("auth_token");
           localStorage.removeItem(CURRENT_ACCOUNT_ID_KEY);
           setToken(null);
