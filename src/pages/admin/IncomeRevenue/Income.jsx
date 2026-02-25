@@ -13,6 +13,7 @@ import {
   FaFilePdf,
   FaFileExcel,
   FaChartBar,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import Portal from "../../../components/Portal";
 import LoadingSpinner from "../../../components/admin/LoadingSpinner";
@@ -36,8 +37,10 @@ const Income = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterAccount, setFilterAccount] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [appliedDateStart, setAppliedDateStart] = useState("");
+  const [appliedDateEnd, setAppliedDateEnd] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState("date");
@@ -93,8 +96,8 @@ const Income = () => {
     incomeTransactions,
     searchTerm,
     filterAccount,
-    startDate,
-    endDate,
+    appliedDateStart,
+    appliedDateEnd,
     sortField,
     sortDirection,
   ]);
@@ -256,18 +259,18 @@ const Income = () => {
       );
     }
 
-    // Filter by date range (compare date part only for consistency)
-    if (startDate) {
+    // Filter by date range (client-side; uses applied dates only)
+    if (appliedDateStart) {
       filtered = filtered.filter((t) => {
         const d = t.date ? String(t.date).split("T")[0] : "";
-        return d >= startDate;
+        return d >= appliedDateStart;
       });
     }
 
-    if (endDate) {
+    if (appliedDateEnd) {
       filtered = filtered.filter((t) => {
         const d = t.date ? String(t.date).split("T")[0] : "";
-        return d <= endDate;
+        return d <= appliedDateEnd;
       });
     }
 
@@ -313,8 +316,8 @@ const Income = () => {
     incomeTransactions,
     searchTerm,
     filterAccount,
-    startDate,
-    endDate,
+    appliedDateStart,
+    appliedDateEnd,
     sortField,
     sortDirection,
   ]);
@@ -505,17 +508,31 @@ const Income = () => {
     );
   };
 
+  const applyDateFilter = () => {
+    setAppliedDateStart(dateStart);
+    setAppliedDateEnd(dateEnd);
+  };
+
+  const clearDates = () => {
+    setDateStart("");
+    setDateEnd("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
+  };
+
   const hasActiveFilters =
     searchTerm ||
     filterAccount !== "all" ||
-    startDate ||
-    endDate;
+    appliedDateStart ||
+    appliedDateEnd;
 
   const clearFilters = () => {
     setSearchTerm("");
     setFilterAccount("all");
-    setStartDate("");
-    setEndDate("");
+    setDateStart("");
+    setDateEnd("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
     setSortField("date");
     setSortDirection("desc");
   };
@@ -1246,6 +1263,96 @@ const Income = () => {
             </div>
           </div>
 
+          {/* Report period — separate panel like Journal Entries / Financial Reports */}
+          <div
+            className="card border-0 shadow-sm mb-3"
+            style={{
+              backgroundColor: "var(--background-white)",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="card-header py-2 px-3"
+              style={{
+                background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+                borderBottom: "1px solid #334155",
+                color: "#fff",
+              }}
+            >
+              <h6 className="mb-0 d-flex align-items-center gap-2">
+                <FaCalendarAlt style={{ fontSize: "0.9rem", opacity: 0.9 }} />
+                Report period
+              </h6>
+              <p className="mb-0 small text-white-50 mt-1" style={{ fontSize: "0.75rem" }}>
+                Set start and end date, then click Apply filter to update the list. Table does not change until you apply.
+              </p>
+            </div>
+            <div className="card-body p-3 bg-light" style={{ borderTop: "1px solid #e2e8f0" }}>
+              <div className="row g-2 align-items-end">
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    <FaCalendarAlt className="me-1" style={{ fontSize: "0.8rem" }} />
+                    From date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateStart}
+                    onChange={(e) => setDateStart(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    To date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateEnd}
+                    onChange={(e) => setDateEnd(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-12 col-md-auto d-flex flex-wrap align-items-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={applyDateFilter}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    <FaFilter className="me-1" style={{ fontSize: "0.8rem" }} />
+                    Apply filter
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={clearDates}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderColor: "#cbd5e1", borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    Clear dates
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Search and Filter Controls — corporate / modern government style */}
           <div
             className="mb-3"
@@ -1329,46 +1436,6 @@ const Income = () => {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="col-6 col-md-4 col-lg-2">
-                  <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Start date
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem 0.75rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                      backgroundColor: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "4px",
-                    }}
-                  />
-                </div>
-                <div className="col-6 col-md-4 col-lg-2">
-                  <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    End date
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      width: "100%",
-                      padding: "0.5rem 0.75rem",
-                      fontSize: "0.8125rem",
-                      color: "#334155",
-                      backgroundColor: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "4px",
-                    }}
-                  />
                 </div>
                 <div className="col-6 col-md-4 col-lg-auto">
                   <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "transparent", userSelect: "none" }}>Action</label>
@@ -1715,8 +1782,8 @@ const Income = () => {
                   >
                     {searchTerm ||
                     filterAccount !== "all" ||
-                    startDate ||
-                    endDate
+                    appliedDateStart ||
+                    appliedDateEnd
                       ? "Try adjusting your search criteria"
                       : "Start by creating your first income transaction."}
                   </p>

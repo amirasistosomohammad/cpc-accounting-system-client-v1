@@ -11,6 +11,7 @@ import {
   FaChevronRight,
   FaChartBar,
   FaChartPie,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import {
   BarChart,
@@ -36,8 +37,10 @@ const CashBank = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [actionLock, setActionLock] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [appliedDateStart, setAppliedDateStart] = useState("");
+  const [appliedDateEnd, setAppliedDateEnd] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,23 +58,17 @@ const CashBank = () => {
 
   useEffect(() => {
     fetchCashAccounts();
-  }, [startDate, endDate]);
+  }, []);
 
   useEffect(() => {
-    if (selectedAccount) {
-      setCurrentPage(1);
-    }
-  }, [selectedAccount, searchTerm, sortField, sortDirection]);
+    setCurrentPage(1);
+  }, [selectedAccount, searchTerm, sortField, sortDirection, appliedDateStart, appliedDateEnd]);
 
   const fetchCashAccounts = async () => {
     try {
       setLoading(true);
       setInitialLoading(true);
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-
-      const data = await request(`/accounting/cash-bank?${params.toString()}`);
+      const data = await request("/accounting/cash-bank");
       const list = Array.isArray(data) ? data : (data?.accounts || data || []);
       setAccounts(list);
 
@@ -160,11 +157,22 @@ const CashBank = () => {
 
   const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
 
-  // Filter and sort transactions
+  // Filter and sort transactions (client-side; date filter applied here, no refetch)
   const filteredTransactions = useMemo(() => {
     if (!currentAccount || !currentAccount.transactions) return [];
 
     let filtered = [...currentAccount.transactions];
+
+    // Date filter (client-side)
+    if (appliedDateStart || appliedDateEnd) {
+      filtered = filtered.filter((t) => {
+        const d = t.date ? String(t.date).slice(0, 10) : "";
+        if (!d) return false;
+        if (appliedDateStart && d < appliedDateStart) return false;
+        if (appliedDateEnd && d > appliedDateEnd) return false;
+        return true;
+      });
+    }
 
     // Search filter
     if (searchTerm.trim()) {
@@ -207,7 +215,7 @@ const CashBank = () => {
     });
 
     return filtered;
-  }, [currentAccount, searchTerm, sortField, sortDirection]);
+  }, [currentAccount, searchTerm, sortField, sortDirection, appliedDateStart, appliedDateEnd]);
 
   // Pagination
   const startIndex = useMemo(() => {
@@ -234,16 +242,29 @@ const CashBank = () => {
     endIndex,
   ]);
 
-  // Calculate statistics
+  // Helper: filter transactions by applied date range (client-side)
+  const filterByDateRange = useCallback((list) => {
+    if (!list || (!appliedDateStart && !appliedDateEnd)) return list || [];
+    return list.filter((t) => {
+      const d = t.date ? String(t.date).slice(0, 10) : "";
+      if (!d) return false;
+      if (appliedDateStart && d < appliedDateStart) return false;
+      if (appliedDateEnd && d > appliedDateEnd) return false;
+      return true;
+    });
+  }, [appliedDateStart, appliedDateEnd]);
+
+  // Calculate statistics (respects client-side date filter)
   const stats = useMemo(() => {
     // If "All Accounts" is selected, aggregate from all accounts
     if (!selectedAccount || selectedAccount === "") {
       const allTransactions = accounts.flatMap((acc) => acc.transactions || []);
-      const totalDebit = allTransactions.reduce(
+      const dateFiltered = filterByDateRange(allTransactions);
+      const totalDebit = dateFiltered.reduce(
         (sum, t) => sum + (parseFloat(t.debit) || 0),
         0
       );
-      const totalCredit = allTransactions.reduce(
+      const totalCredit = dateFiltered.reduce(
         (sum, t) => sum + (parseFloat(t.credit) || 0),
         0
       );
@@ -253,7 +274,7 @@ const CashBank = () => {
       );
 
       return {
-        totalTransactions: allTransactions.length,
+        totalTransactions: dateFiltered.length,
         totalDebit,
         totalCredit,
         currentBalance: totalBalance,
@@ -270,7 +291,7 @@ const CashBank = () => {
       };
     }
 
-    const transactions = currentAccount.transactions || [];
+    const transactions = filterByDateRange(currentAccount.transactions || []);
     const totalDebit = transactions.reduce(
       (sum, t) => sum + (parseFloat(t.debit) || 0),
       0
@@ -286,9 +307,9 @@ const CashBank = () => {
       totalCredit,
       currentBalance: currentAccount.current_balance || 0,
     };
-  }, [selectedAccount, currentAccount, accounts]);
+  }, [selectedAccount, currentAccount, accounts, filterByDateRange]);
 
-  // Analytics chart data for "All Accounts" view (corporate dashboard)
+  // Analytics chart data for "All Accounts" view (respects client-side date filter)
   const analyticsData = useMemo(() => {
     if (!accounts.length) {
       return {
@@ -299,19 +320,23 @@ const CashBank = () => {
         totalCashPosition: 0,
       };
     }
+    const allTxByAccount = accounts.map((acc) => ({
+      ...acc,
+      filteredTransactions: filterByDateRange(acc.transactions || []),
+    }));
     const balanceByAccount = accounts.map((acc) => ({
       name: `${acc.account_code} ${acc.account_name}`,
       shortName: acc.account_name,
       code: acc.account_code,
       balance: parseFloat(acc.current_balance) || 0,
-      transactions: (acc.transactions || []).length,
+      transactions: (filterByDateRange(acc.transactions || [])).length,
     }));
     const totalBalance = balanceByAccount.reduce((s, d) => s + d.balance, 0);
-    const totalDebit = accounts.flatMap((a) => a.transactions || []).reduce(
+    const totalDebit = allTxByAccount.flatMap((a) => a.filteredTransactions).reduce(
       (s, t) => s + (parseFloat(t.debit) || 0),
       0
     );
-    const totalCredit = accounts.flatMap((a) => a.transactions || []).reduce(
+    const totalCredit = allTxByAccount.flatMap((a) => a.filteredTransactions).reduce(
       (s, t) => s + (parseFloat(t.credit) || 0),
       0
     );
@@ -339,7 +364,7 @@ const CashBank = () => {
       })),
       totalCashPosition: totalBalance,
     };
-  }, [accounts]);
+  }, [accounts, filterByDateRange]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -355,17 +380,31 @@ const CashBank = () => {
     return sortDirection === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
   };
 
+  const applyDateFilter = () => {
+    setAppliedDateStart(dateStart);
+    setAppliedDateEnd(dateEnd);
+  };
+
+  const clearDates = () => {
+    setDateStart("");
+    setDateEnd("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
+  };
+
   const hasActiveFilters =
     searchTerm ||
-    startDate ||
-    endDate ||
+    appliedDateStart ||
+    appliedDateEnd ||
     sortField !== "date" ||
     sortDirection !== "desc";
 
   const clearFilters = () => {
     setSearchTerm("");
-    setStartDate("");
-    setEndDate("");
+    setDateStart("");
+    setDateEnd("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
     setSortField("date");
     setSortDirection("desc");
   };
@@ -876,6 +915,96 @@ const CashBank = () => {
             </div>
           </div>
 
+          {/* Report period — separate panel like Journal Entries / Financial Reports */}
+          <div
+            className="card border-0 shadow-sm mb-3"
+            style={{
+              backgroundColor: "var(--background-white)",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="card-header py-2 px-3"
+              style={{
+                background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+                borderBottom: "1px solid #334155",
+                color: "#fff",
+              }}
+            >
+              <h6 className="mb-0 d-flex align-items-center gap-2">
+                <FaCalendarAlt style={{ fontSize: "0.9rem", opacity: 0.9 }} />
+                Report period
+              </h6>
+              <p className="mb-0 small text-white-50 mt-1" style={{ fontSize: "0.75rem" }}>
+                Set start and end date, then click Apply filter to update the list. Table does not change until you apply.
+              </p>
+            </div>
+            <div className="card-body p-3 bg-light" style={{ borderTop: "1px solid #e2e8f0" }}>
+              <div className="row g-2 align-items-end">
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    <FaCalendarAlt className="me-1" style={{ fontSize: "0.8rem" }} />
+                    From date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateStart}
+                    onChange={(e) => setDateStart(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    To date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateEnd}
+                    onChange={(e) => setDateEnd(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-12 col-md-auto d-flex flex-wrap align-items-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={applyDateFilter}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    <FaFilter className="me-1" style={{ fontSize: "0.8rem" }} />
+                    Apply filter
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={clearDates}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderColor: "#cbd5e1", borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    Clear dates
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Search and Filter Controls - Corporate style */}
           <div
             className="card border-0 shadow-sm mb-3"
@@ -895,7 +1024,7 @@ const CashBank = () => {
                 <FaFilter className="me-1" style={{ color: "var(--primary-color)" }} />
                 Filters &amp; View
               </span>
-              <span className="small text-muted ms-2">Account • Date range • Search</span>
+              <span className="small text-muted ms-2">Account • Search</span>
             </div>
             <div className="card-body p-3">
               <div className="row g-2 align-items-start">
@@ -930,52 +1059,6 @@ const CashBank = () => {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="col-6 col-md-2 col-lg-2">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{
-                      color: "var(--text-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  />
-                </div>
-                <div className="col-6 col-md-2 col-lg-2">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{
-                      color: "var(--text-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  />
                 </div>
                 <div className="col-12 col-md-5 col-lg-3">
                   <label
@@ -1337,7 +1420,7 @@ const CashBank = () => {
                       className="mb-3 small"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      {searchTerm || startDate || endDate
+                      {searchTerm || appliedDateStart || appliedDateEnd
                         ? "Try adjusting your search criteria"
                         : "No transactions found for this account."}
                     </p>

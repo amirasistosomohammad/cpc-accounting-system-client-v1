@@ -13,6 +13,8 @@ import {
   FaFilePdf,
   FaFileExcel,
   FaChartBar,
+  FaFilter,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import Portal from "../../../components/Portal";
 import JournalEntryFormModal from "./JournalEntryFormModal";
@@ -39,8 +41,10 @@ const JournalEntries = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState("entry_date");
   const [sortDirection, setSortDirection] = useState("desc");
-  const [filterStartDate, setFilterStartDate] = useState("");
-  const [filterEndDate, setFilterEndDate] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [appliedDateStart, setAppliedDateStart] = useState("");
+  const [appliedDateEnd, setAppliedDateEnd] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -117,7 +121,7 @@ const JournalEntries = () => {
 
   useEffect(() => {
     filterAndSortEntries();
-  }, [entries, searchTerm, sortField, sortDirection]);
+  }, [entries, searchTerm, sortField, sortDirection, appliedDateStart, appliedDateEnd]);
 
   const fetchAccounts = async () => {
     try {
@@ -182,8 +186,8 @@ const JournalEntries = () => {
       });
     }
 
-    // Date range filter (client-side, fast)
-    if (filterStartDate || filterEndDate) {
+    // Date range filter (client-side; uses applied dates so table updates only when Apply filter is clicked)
+    if (appliedDateStart || appliedDateEnd) {
       filtered = filtered.filter((entry) => {
         const raw = entry.entry_date;
         if (!raw) return false;
@@ -194,8 +198,8 @@ const JournalEntries = () => {
             ? raw.toISOString().split("T")[0]
             : "";
         if (!isoDate) return false;
-        if (filterStartDate && isoDate < filterStartDate) return false;
-        if (filterEndDate && isoDate > filterEndDate) return false;
+        if (appliedDateStart && isoDate < appliedDateStart) return false;
+        if (appliedDateEnd && isoDate > appliedDateEnd) return false;
         return true;
       });
     }
@@ -223,7 +227,7 @@ const JournalEntries = () => {
 
     setFilteredEntries(filtered);
     setCurrentPage(1);
-  }, [entries, searchTerm, sortField, sortDirection]);
+  }, [entries, searchTerm, sortField, sortDirection, appliedDateStart, appliedDateEnd]);
 
   const handleAddLine = () => {
     setFormData({
@@ -841,18 +845,27 @@ const JournalEntries = () => {
   };
 
   const hasActiveFilters =
-    searchTerm ||
-    sortField !== "entry_date" ||
-    sortDirection !== "desc" ||
-    filterStartDate ||
-    filterEndDate;
+    searchTerm || appliedDateStart || appliedDateEnd;
+
+  const applyDateFilter = () => {
+    setAppliedDateStart(dateStart);
+    setAppliedDateEnd(dateEnd);
+  };
+
+  const clearDates = () => {
+    setDateStart("");
+    setDateEnd("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
+  };
 
   const clearFilters = () => {
     setSearchTerm("");
-    setSortField("entry_date");
-    setSortDirection("desc");
-    setFilterStartDate("");
-    setFilterEndDate("");
+    setAppliedDateStart("");
+    setAppliedDateEnd("");
+    setDateStart("");
+    setDateEnd("");
+    setCurrentPage(1);
   };
 
   // Pagination
@@ -1425,6 +1438,96 @@ const JournalEntries = () => {
             </div>
           </div>
 
+          {/* Report period — separate panel like Financial Reports */}
+          <div
+            className="card border-0 shadow-sm mb-3"
+            style={{
+              backgroundColor: "var(--background-white)",
+              border: "1px solid #e2e8f0",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="card-header py-2 px-3"
+              style={{
+                background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+                borderBottom: "1px solid #334155",
+                color: "#fff",
+              }}
+            >
+              <h6 className="mb-0 d-flex align-items-center gap-2">
+                <FaFilter style={{ fontSize: "0.9rem", opacity: 0.9 }} />
+                Report period
+              </h6>
+              <p className="mb-0 small text-white-50 mt-1" style={{ fontSize: "0.75rem" }}>
+                Set start and end date, then click Apply filter to update the list. Table does not change until you apply.
+              </p>
+            </div>
+            <div className="card-body p-3 bg-light" style={{ borderTop: "1px solid #e2e8f0" }}>
+              <div className="row g-2 align-items-end">
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    <FaCalendarAlt className="me-1" style={{ fontSize: "0.8rem" }} />
+                    From date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateStart}
+                    onChange={(e) => setDateStart(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-6 col-md-3">
+                  <label className="form-label small fw-600 text-secondary mb-1">
+                    To date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={dateEnd}
+                    onChange={(e) => setDateEnd(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+                <div className="col-12 col-md-auto d-flex flex-wrap align-items-end gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={applyDateFilter}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    <FaFilter className="me-1" style={{ fontSize: "0.8rem" }} />
+                    Apply filter
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={clearDates}
+                    disabled={loading || isActionDisabled()}
+                    style={{ borderColor: "#cbd5e1", borderRadius: "6px", fontWeight: 600 }}
+                  >
+                    Clear dates
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Search and Filter Controls */}
           <div
             className="card border-0 shadow-sm mb-3"
@@ -1499,93 +1602,6 @@ const JournalEntries = () => {
                       </button>
                     )}
                   </div>
-                </div>
-                <div className="col-6 col-md-3">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    From date
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  />
-                </div>
-                <div className="col-6 col-md-3">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    To date
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  />
-                </div>
-                <div className="col-6 col-md-2">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Sort By
-                  </label>
-                  <select
-                    className="form-select form-select-sm"
-                    value={sortField}
-                    onChange={(e) => setSortField(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  >
-                    <option value="entry_date">Entry Date</option>
-                    <option value="entry_number">Entry Number</option>
-                    <option value="description">Description</option>
-                    <option value="total_debit">Total Debit</option>
-                    <option value="total_credit">Total Credit</option>
-                  </select>
-                </div>
-                <div className="col-6 col-md-2">
-                  <label
-                    className="form-label small fw-semibold mb-1"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Order
-                  </label>
-                  <select
-                    className="form-select form-select-sm"
-                    value={sortDirection}
-                    onChange={(e) => setSortDirection(e.target.value)}
-                    disabled={loading || isActionDisabled()}
-                    style={{
-                      backgroundColor: "var(--input-bg)",
-                      borderColor: "var(--input-border)",
-                      color: "var(--input-text)",
-                    }}
-                  >
-                    <option value="desc">Descending</option>
-                    <option value="asc">Ascending</option>
-                  </select>
                 </div>
                 <div className="col-6 col-md-2">
                   <label

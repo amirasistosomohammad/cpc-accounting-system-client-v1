@@ -292,7 +292,7 @@ const Reports = () => {
                 style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
               />
             </div>
-            <div className="col-md-2">
+            <div className="col-md-auto d-flex flex-wrap align-items-end gap-2">
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
@@ -306,8 +306,6 @@ const Reports = () => {
                 <FaFilter className="me-1" style={{ fontSize: "0.8rem" }} />
                 Apply filter
               </button>
-            </div>
-            <div className="col-md-2">
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
