@@ -39,6 +39,8 @@ const JournalEntries = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState("entry_date");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -177,6 +179,24 @@ const JournalEntries = () => {
           entryNumber.includes(loweredSearch) ||
           reference.includes(loweredSearch)
         );
+      });
+    }
+
+    // Date range filter (client-side, fast)
+    if (filterStartDate || filterEndDate) {
+      filtered = filtered.filter((entry) => {
+        const raw = entry.entry_date;
+        if (!raw) return false;
+        const isoDate =
+          typeof raw === "string"
+            ? raw.slice(0, 10)
+            : raw instanceof Date
+            ? raw.toISOString().split("T")[0]
+            : "";
+        if (!isoDate) return false;
+        if (filterStartDate && isoDate < filterStartDate) return false;
+        if (filterEndDate && isoDate > filterEndDate) return false;
+        return true;
       });
     }
 
@@ -821,12 +841,18 @@ const JournalEntries = () => {
   };
 
   const hasActiveFilters =
-    searchTerm || sortField !== "entry_date" || sortDirection !== "desc";
+    searchTerm ||
+    sortField !== "entry_date" ||
+    sortDirection !== "desc" ||
+    filterStartDate ||
+    filterEndDate;
 
   const clearFilters = () => {
     setSearchTerm("");
     setSortField("entry_date");
     setSortDirection("desc");
+    setFilterStartDate("");
+    setFilterEndDate("");
   };
 
   // Pagination
@@ -1473,6 +1499,46 @@ const JournalEntries = () => {
                       </button>
                     )}
                   </div>
+                </div>
+                <div className="col-6 col-md-3">
+                  <label
+                    className="form-label small fw-semibold mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    From date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                    }}
+                  />
+                </div>
+                <div className="col-6 col-md-3">
+                  <label
+                    className="form-label small fw-semibold mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    To date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    disabled={loading || isActionDisabled()}
+                    style={{
+                      backgroundColor: "var(--input-bg)",
+                      borderColor: "var(--input-border)",
+                      color: "var(--input-text)",
+                    }}
+                  />
                 </div>
                 <div className="col-6 col-md-2">
                   <label

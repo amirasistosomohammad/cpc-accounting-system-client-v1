@@ -20,76 +20,50 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState("trial");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [trialData, setTrialData] = useState([]);
   const [incomeData, setIncomeData] = useState(null);
   const [balanceData, setBalanceData] = useState(null);
 
+  const fetchAll = async (dateStart = "", dateEnd = "") => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateStart) params.append("start_date", dateStart);
+      if (dateEnd) params.append("end_date", dateEnd);
+      const query = params.toString();
+      const prefix = query ? `?${query}` : "";
+
+      const [trialRes, incomeRes, balanceRes] = await Promise.all([
+        request(`/accounting/reports/trial-balance${prefix}`).catch((e) => ({ accounts: [], error: e })),
+        request(`/accounting/reports/income-statement${prefix}`).catch((e) => ({ error: e })),
+        request(`/accounting/reports/balance-sheet${prefix}`).catch((e) => ({ error: e })),
+      ]);
+
+      setTrialData(Array.isArray(trialRes?.accounts) ? trialRes.accounts : []);
+      if (incomeRes?.error) throw incomeRes.error;
+      setIncomeData(incomeRes || null);
+      if (balanceRes?.error) throw balanceRes.error;
+      setBalanceData(balanceRes || null);
+    } catch (err) {
+      console.error(err);
+      showToast.error(err?.message || "Failed to load reports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAll();
-  }, [startDate, endDate]);
+  }, []);
 
-  const fetchAll = async () => {
-    await Promise.all([
-      fetchTrialBalance(),
-      fetchIncomeStatement(),
-      fetchBalanceSheet(),
-    ]);
-  };
-
-  const fetchTrialBalance = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      const data = await request(
-        `/accounting/reports/trial-balance?${params.toString()}`
-      );
-      setTrialData(data?.accounts || []);
-    } catch (err) {
-      console.error(err);
-      showToast.error(err.message || "Failed to load trial balance");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchIncomeStatement = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      const data = await request(
-        `/accounting/reports/income-statement?${params.toString()}`
-      );
-      setIncomeData(data);
-    } catch (err) {
-      console.error(err);
-      showToast.error(err.message || "Failed to load income statement");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchBalanceSheet = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      const data = await request(
-        `/accounting/reports/balance-sheet?${params.toString()}`
-      );
-      setBalanceData(data);
-    } catch (err) {
-      console.error(err);
-      showToast.error(err.message || "Failed to load balance sheet");
-    } finally {
-      setLoading(false);
-    }
+  const applyFilter = () => {
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+    fetchAll(startDate, endDate);
   };
 
   const formatCurrency = (value) => {
@@ -105,6 +79,9 @@ const Reports = () => {
   const clearDates = () => {
     setStartDate("");
     setEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    fetchAll();
   };
 
   const reportSlug = {
@@ -116,8 +93,8 @@ const Reports = () => {
   const exportPdf = async () => {
     try {
       const params = new URLSearchParams();
-      if (startDate) params.set("start_date", startDate);
-      if (endDate) params.set("end_date", endDate);
+      if (appliedStartDate) params.set("start_date", appliedStartDate);
+      if (appliedEndDate) params.set("end_date", appliedEndDate);
       const slug = reportSlug[activeTab];
       const data = await request(
         `/accounting/reports/${slug}/export/pdf?${params.toString()}`
@@ -138,8 +115,8 @@ const Reports = () => {
   const exportExcel = async () => {
     try {
       const params = new URLSearchParams();
-      if (startDate) params.set("start_date", startDate);
-      if (endDate) params.set("end_date", endDate);
+      if (appliedStartDate) params.set("start_date", appliedStartDate);
+      if (appliedEndDate) params.set("end_date", appliedEndDate);
       const slug = reportSlug[activeTab];
       const token = localStorage.getItem("auth_token");
       const url = `${API_BASE_URL}/accounting/reports/${slug}/export/excel?${params.toString()}`;
@@ -244,7 +221,7 @@ const Reports = () => {
           <button
             type="button"
             className="btn btn-sm"
-            onClick={fetchAll}
+            onClick={() => fetchAll(appliedStartDate, appliedEndDate)}
             disabled={loading}
             style={{
               padding: "0.45rem 0.9rem",
@@ -283,7 +260,7 @@ const Reports = () => {
             Report period
           </h6>
           <p className="mb-0 small text-white-50 mt-1">
-            Set start and end date to filter journal entries
+            Set start and end date, then click Apply filter to update the reports. Table does not change until you apply.
           </p>
         </div>
         <div className="p-3 p-md-4 bg-light" style={{ borderTop: "1px solid #e2e8f0" }}>
@@ -298,6 +275,7 @@ const Reports = () => {
                 className="form-control form-control-sm"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                disabled={loading}
                 style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
               />
             </div>
@@ -310,14 +288,31 @@ const Reports = () => {
                 className="form-control form-control-sm"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                disabled={loading}
                 style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
               />
             </div>
-            <div className="col-md-3">
+            <div className="col-md-2">
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={applyFilter}
+                disabled={loading}
+                style={{
+                  borderRadius: "6px",
+                  fontWeight: 600,
+                }}
+              >
+                <FaFilter className="me-1" style={{ fontSize: "0.8rem" }} />
+                Apply filter
+              </button>
+            </div>
+            <div className="col-md-2">
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
                 onClick={clearDates}
+                disabled={loading}
                 style={{
                   borderColor: "#cbd5e1",
                   borderRadius: "6px",
