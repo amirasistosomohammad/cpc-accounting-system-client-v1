@@ -692,6 +692,7 @@ const UnifiedAccountManagement = () => {
       if (data?.success && data?.account_type) {
         showToast.success("Account type updated successfully.");
         await fetchAccountTypes();
+        await fetchChartOfAccounts();
         initialEditAccountTypeFormRef.current = null;
         handleCloseEditAccountTypeForm();
       } else {
