@@ -36,14 +36,35 @@ const JournalEntryFormModal = ({
 
   const formatAmountForDisplay = (value) => {
     if (value === null || value === undefined) return "";
-    const raw = String(value);
-    if (!raw) return "";
-    const [intPartRaw, decPartRaw] = raw.split(".");
+    const rawOriginal = String(value).replace(/,/g, ".");
+    if (!rawOriginal) return "";
+
+    const dotCount = (rawOriginal.match(/\./g) || []).length;
+    const hasTrailingDotOnly =
+      rawOriginal.endsWith(".") && dotCount === 1;
+
+    if (rawOriginal === ".") {
+      return "0.";
+    }
+
+    const [intPartRaw, decPartRaw] = rawOriginal.split(".");
     const intDigits = intPartRaw.replace(/\D/g, "");
-    if (!intDigits) return decPartRaw ? `0.${decPartRaw}` : "";
+
+    if (!intDigits) {
+      if (decPartRaw !== undefined && decPartRaw !== "") {
+        return `0.${decPartRaw}`;
+      }
+      return hasTrailingDotOnly ? "0." : "";
+    }
+
     const intNumber = Number(intDigits);
-    if (!Number.isFinite(intNumber)) return raw;
+    if (!Number.isFinite(intNumber)) return rawOriginal;
     const formattedInt = intNumber.toLocaleString("en-PH");
+
+    if (hasTrailingDotOnly) {
+      return `${formattedInt}.`;
+    }
+
     return decPartRaw !== undefined && decPartRaw !== ""
       ? `${formattedInt}.${decPartRaw}`
       : formattedInt;

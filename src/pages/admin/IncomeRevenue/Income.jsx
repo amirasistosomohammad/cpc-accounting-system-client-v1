@@ -110,9 +110,10 @@ const Income = () => {
 
       // Get all invoices (they represent income)
       const invoicesData = await request("/accounting/invoices?per_page=100");
-      const invoices = Array.isArray(invoicesData) ? invoicesData : (invoicesData?.data || []);
+      const invoices = Array.isArray(invoicesData)
+        ? invoicesData
+        : invoicesData?.data || [];
       if (invoices.length > 0) {
-
         // Transform invoices to income transactions (include footprint for view modal)
         const invoiceTransactions = invoices.map((invoice) => ({
           id: `invoice-${invoice.id}`,
@@ -145,9 +146,10 @@ const Income = () => {
         const journalData = await request(
           `/accounting/journal-entries?per_page=50&page=${currentPage}`,
         ).catch(() => ({ data: [] }));
-        const entries = Array.isArray(journalData) ? journalData : (journalData?.data || []);
+        const entries = Array.isArray(journalData)
+          ? journalData
+          : journalData?.data || [];
         if (entries) {
-
           if (entries.length === 0) {
             hasMorePages = false;
           } else {
@@ -171,7 +173,7 @@ const Income = () => {
               parseFloat(line.credit_amount) > 0
             ) {
               const isInvoiceEntry = allTransactions.some(
-                (t) => t.journal_entry_id === entry.id && t.type === "invoice"
+                (t) => t.journal_entry_id === entry.id && t.type === "invoice",
               );
 
               const isInvoiceReference =
@@ -183,7 +185,7 @@ const Income = () => {
                 const existingTransaction = allTransactions.find(
                   (t) =>
                     t.journal_entry_id === entry.id &&
-                    t.account_code === line.account.account_code
+                    t.account_code === line.account.account_code,
                 );
 
                 if (!existingTransaction) {
@@ -219,7 +221,7 @@ const Income = () => {
       // Calculate stats
       const totalIncome = allTransactions.reduce(
         (sum, t) => sum + (parseFloat(t.amount) || 0),
-        0
+        0,
       );
       const incomeByAccount = allTransactions.reduce((acc, transaction) => {
         const key = transaction.account_code || "Other";
@@ -248,6 +250,59 @@ const Income = () => {
     }
   };
 
+  // --- Currency input helpers (match Journal Entry modal behavior) ---
+  const formatAmountForDisplay = (value) => {
+    if (value === null || value === undefined) return "";
+    const rawOriginal = String(value).replace(/,/g, ".");
+    if (!rawOriginal) return "";
+
+    // Allow user to see a trailing decimal while typing (e.g. "123.")
+    const dotCount = (rawOriginal.match(/\./g) || []).length;
+    const hasTrailingDotOnly =
+      rawOriginal.endsWith(".") && dotCount === 1;
+
+    if (rawOriginal === ".") {
+      return "0.";
+    }
+
+    const [intPartRaw, decPartRaw] = rawOriginal.split(".");
+    const intDigits = intPartRaw.replace(/\D/g, "");
+
+    if (!intDigits) {
+      if (decPartRaw !== undefined && decPartRaw !== "") {
+        return `0.${decPartRaw}`;
+      }
+      return hasTrailingDotOnly ? "0." : "";
+    }
+
+    const intNumber = Number(intDigits);
+    if (!Number.isFinite(intNumber)) return rawOriginal;
+    const formattedInt = intNumber.toLocaleString("en-PH");
+
+    if (hasTrailingDotOnly) {
+      return `${formattedInt}.`;
+    }
+
+    return decPartRaw !== undefined && decPartRaw !== ""
+      ? `${formattedInt}.${decPartRaw}`
+      : formattedInt;
+  };
+
+  const handleAmountChange = (input) => {
+    let cleaned = (input || "")
+      .toString()
+      .replace(/,/g, ".")
+      .replace(/[^0-9.]/g, "");
+    const parts = cleaned.split(".");
+    if (parts.length > 2) {
+      cleaned = `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      amount: cleaned,
+    }));
+  };
+
   const filterAndSortTransactions = useCallback(() => {
     let filtered = [...incomeTransactions];
 
@@ -255,7 +310,7 @@ const Income = () => {
     if (filterAccount !== "all") {
       const accountFilter = String(filterAccount);
       filtered = filtered.filter(
-        (t) => String(t.account_code || "") === accountFilter
+        (t) => String(t.account_code || "") === accountFilter,
       );
     }
 
@@ -324,8 +379,10 @@ const Income = () => {
 
   const fetchIncomeAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts-list?category=revenue&active_only=true");
-      setIncomeAccounts(Array.isArray(data) ? data : (data?.data || []));
+      const data = await request(
+        "/accounting/chart-of-accounts-list?category=revenue&active_only=true",
+      );
+      setIncomeAccounts(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error("Error fetching income accounts:", error);
     }
@@ -336,23 +393,36 @@ const Income = () => {
     const byCode = new Map();
     incomeAccounts.forEach((acc) => {
       const code = String(acc.account_code || "");
-      if (code) byCode.set(code, { id: acc.id, account_code: code, account_name: acc.account_name || code });
+      if (code)
+        byCode.set(code, {
+          id: acc.id,
+          account_code: code,
+          account_name: acc.account_name || code,
+        });
     });
     incomeTransactions.forEach((t) => {
       const code = String(t.account_code || "");
       if (code && !byCode.has(code)) {
-        byCode.set(code, { id: code, account_code: code, account_name: t.account_name || code });
+        byCode.set(code, {
+          id: code,
+          account_code: code,
+          account_name: t.account_name || code,
+        });
       }
     });
-    return Array.from(byCode.values()).sort((a, b) => (a.account_code || "").localeCompare(b.account_code || ""));
+    return Array.from(byCode.values()).sort((a, b) =>
+      (a.account_code || "").localeCompare(b.account_code || ""),
+    );
   }, [incomeAccounts, incomeTransactions]);
 
   const fetchCashAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts-list?active_only=true");
-      const list = Array.isArray(data) ? data : (data?.data || []);
+      const data = await request(
+        "/accounting/chart-of-accounts-list?active_only=true",
+      );
+      const list = Array.isArray(data) ? data : data?.data || [];
       const cash = list.filter((acc) =>
-        ["1010", "1020", "1030"].includes(acc.account_code)
+        ["1010", "1020", "1030"].includes(acc.account_code),
       );
       setCashAccounts(cash);
     } catch (error) {
@@ -363,7 +433,7 @@ const Income = () => {
   const fetchClients = async () => {
     try {
       const data = await request("/accounting/clients?active_only=true");
-      setClients(Array.isArray(data) ? data : (data?.data || []));
+      setClients(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error("Error fetching clients:", error);
     }
@@ -376,25 +446,31 @@ const Income = () => {
       await request("/accounting/journal-entries", {
         method: "POST",
         body: JSON.stringify({
-            entry_date: formData.income_date,
-            description:
-              formData.description || `Income: ${formData.income_account_id}`,
-            reference_number: formData.reference_number || null,
-            lines: [
-              {
-                account_id: parseInt(formData.cash_account_id),
-                debit_amount: parseFloat(formData.amount),
-                credit_amount: 0,
-                description: formData.description || "Income received",
-              },
-              {
-                account_id: parseInt(formData.income_account_id),
-                debit_amount: 0,
-                credit_amount: parseFloat(formData.amount),
-                description: formData.description || "Income received",
-              },
-            ],
-          }),
+          entry_date: formData.income_date,
+          description:
+            formData.description || `Income: ${formData.income_account_id}`,
+          reference_number: formData.reference_number || null,
+          lines: [
+            {
+              account_id: parseInt(formData.cash_account_id),
+              debit_amount:
+                parseFloat(
+                  (formData.amount || "").toString().replace(/,/g, "")
+                ) || 0,
+              credit_amount: 0,
+              description: formData.description || "Income received",
+            },
+            {
+              account_id: parseInt(formData.income_account_id),
+              debit_amount: 0,
+              credit_amount:
+                parseFloat(
+                  (formData.amount || "").toString().replace(/,/g, "")
+                ) || 0,
+              description: formData.description || "Income received",
+            },
+          ],
+        }),
       });
 
       showToast.success("Income recorded successfully");
@@ -521,10 +597,7 @@ const Income = () => {
   };
 
   const hasActiveFilters =
-    searchTerm ||
-    filterAccount !== "all" ||
-    appliedDateStart ||
-    appliedDateEnd;
+    searchTerm || filterAccount !== "all" || appliedDateStart || appliedDateEnd;
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -568,12 +641,18 @@ const Income = () => {
       endDate = now.toISOString().split("T")[0];
       label = `This Week (${formatDate(startDate)} – ${formatDate(endDate)})`;
     } else if (reportPeriod === "this_month") {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        .toISOString()
+        .split("T")[0];
       endDate = now.toISOString().split("T")[0];
       label = `This Month (${formatDate(startDate)} – ${formatDate(endDate)})`;
     } else if (reportPeriod === "last_month") {
-      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split("T")[0];
-      endDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        .toISOString()
+        .split("T")[0];
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0)
+        .toISOString()
+        .split("T")[0];
       label = `Last Month (${formatDate(startDate)} – ${formatDate(endDate)})`;
     } else if (reportPeriod === "this_year") {
       startDate = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
@@ -587,12 +666,15 @@ const Income = () => {
     return { start_date: startDate, end_date: endDate, label };
   }, [reportPeriod, reportCustomStart, reportCustomEnd]);
 
-  const getReportTransactions = useCallback((start_date, end_date) => {
-    return incomeTransactions.filter((t) => {
-      const d = t.date ? String(t.date).split("T")[0] : "";
-      return d >= start_date && d <= end_date;
-    });
-  }, [incomeTransactions]);
+  const getReportTransactions = useCallback(
+    (start_date, end_date) => {
+      return incomeTransactions.filter((t) => {
+        const d = t.date ? String(t.date).split("T")[0] : "";
+        return d >= start_date && d <= end_date;
+      });
+    },
+    [incomeTransactions],
+  );
 
   const handleOpenReportModal = () => {
     setReportModalClosing(false);
@@ -615,15 +697,27 @@ const Income = () => {
     setReportExporting(true);
     try {
       const list = getReportTransactions(start_date, end_date);
-      const generated = new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-      const totalIncome = list.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+      const generated = new Date().toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      const totalIncome = list.reduce(
+        (s, t) => s + (parseFloat(t.amount) || 0),
+        0,
+      );
 
       // Summary by account (account code, name, count, total)
       const byAccount = list.reduce((acc, t) => {
         const code = t.account_code || "";
         const name = (t.account_name || "").replace(/</g, "&lt;");
         const key = code || "Other";
-        if (!acc[key]) acc[key] = { code, name: name || (key === "Other" ? "Other" : ""), count: 0, total: 0 };
+        if (!acc[key])
+          acc[key] = {
+            code,
+            name: name || (key === "Other" ? "Other" : ""),
+            count: 0,
+            total: 0,
+          };
         acc[key].count += 1;
         acc[key].total += parseFloat(t.amount) || 0;
         return acc;
@@ -760,14 +854,28 @@ const Income = () => {
         const code = t.account_code || "";
         const name = (t.account_name || "").replace(/"/g, '""');
         const key = code || "Other";
-        if (!acc[key]) acc[key] = { code: (code || "").replace(/"/g, '""'), name: name || (key === "Other" ? "Other" : ""), count: 0, total: 0 };
+        if (!acc[key])
+          acc[key] = {
+            code: (code || "").replace(/"/g, '""'),
+            name: name || (key === "Other" ? "Other" : ""),
+            count: 0,
+            total: 0,
+          };
         acc[key].count += 1;
         acc[key].total += parseFloat(t.amount) || 0;
         return acc;
       }, {});
       const accountLines = Object.values(byAccount)
         .sort((a, b) => String(a.code).localeCompare(String(b.code)))
-        .map((row, idx) => [idx + 1, `"${row.code}"`, `"${row.name}"`, row.count, row.total.toFixed(2)].join(","));
+        .map((row, idx) =>
+          [
+            idx + 1,
+            `"${row.code}"`,
+            `"${row.name}"`,
+            row.count,
+            row.total.toFixed(2),
+          ].join(","),
+        );
 
       const lines = [
         "Income / Revenue Report",
@@ -786,7 +894,9 @@ const Income = () => {
       list.forEach((t, idx) => {
         const type = (t.type || "").replace(/"/g, '""');
         const client = (t.client_name || "").replace(/"/g, '""');
-        const account = `${t.account_code || ""} ${t.account_name || ""}`.trim().replace(/"/g, '""');
+        const account = `${t.account_code || ""} ${t.account_name || ""}`
+          .trim()
+          .replace(/"/g, '""');
         const ref = (t.reference || "").replace(/"/g, '""');
         lines.push(
           [
@@ -846,7 +956,7 @@ const Income = () => {
   const totalIncome = useMemo(() => {
     return filteredTransactions.reduce(
       (sum, t) => sum + (parseFloat(t.amount) || 0),
-      0
+      0,
     );
   }, [filteredTransactions]);
 
@@ -1011,12 +1121,14 @@ const Income = () => {
                   backgroundColor: "#fff",
                   border: "1px solid #e2e8f0",
                   borderRadius: "4px",
-                  cursor: loading || isActionDisabled() ? "not-allowed" : "pointer",
+                  cursor:
+                    loading || isActionDisabled() ? "not-allowed" : "pointer",
                   opacity: loading || isActionDisabled() ? 0.7 : 1,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "0.4rem",
-                  transition: "background-color 0.2s ease, border-color 0.2s ease",
+                  transition:
+                    "background-color 0.2s ease, border-color 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (!loading && !e.currentTarget.disabled) {
@@ -1045,7 +1157,8 @@ const Income = () => {
                   backgroundColor: "#1e3a5f",
                   border: "1px solid #1e3a5f",
                   borderRadius: "4px",
-                  cursor: loading || isActionDisabled() ? "not-allowed" : "pointer",
+                  cursor:
+                    loading || isActionDisabled() ? "not-allowed" : "pointer",
                   opacity: loading || isActionDisabled() ? 0.7 : 1,
                 }}
               >
@@ -1066,26 +1179,55 @@ const Income = () => {
                   borderRadius: "6px",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   overflow: "hidden",
-                  transition: "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                  transition:
+                    "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "#f8fafc";
                   e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 6px rgba(0,0,0,0.08)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = "#fff";
                   e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 3px rgba(0,0,0,0.06)";
                 }}
               >
-                <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   Total transactions
                 </div>
-                <div style={{ padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div
+                  style={{
+                    padding: "0.875rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
-                      onClick={() => !initialLoading && handleNumberClick("Total Transactions", stats.totalTransactions, false)}
+                      onClick={() =>
+                        !initialLoading &&
+                        handleNumberClick(
+                          "Total Transactions",
+                          stats.totalTransactions,
+                          false,
+                        )
+                      }
                       style={{
                         color: "#334155",
                         fontSize: "clamp(1rem, 3vw, 1.5rem)",
@@ -1096,14 +1238,37 @@ const Income = () => {
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {initialLoading ? "..." : abbreviateNumber(stats.totalTransactions, false)}
+                      {initialLoading
+                        ? "..."
+                        : abbreviateNumber(stats.totalTransactions, false)}
                     </div>
-                    <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#64748b" }}>
-                      <i className="fas fa-info-circle me-1" /> Click to view full number
+                    <div
+                      style={{
+                        marginTop: "0.25rem",
+                        fontSize: "0.7rem",
+                        color: "#64748b",
+                      }}
+                    >
+                      <i className="fas fa-info-circle me-1" /> Click to view
+                      full number
                     </div>
                   </div>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "6px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-file-invoice" style={{ color: "#64748b", fontSize: "1.1rem" }} />
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "6px",
+                      backgroundColor: "#f1f5f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i
+                      className="fas fa-file-invoice"
+                      style={{ color: "#64748b", fontSize: "1.1rem" }}
+                    />
                   </div>
                 </div>
               </div>
@@ -1117,26 +1282,55 @@ const Income = () => {
                   borderRadius: "6px",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   overflow: "hidden",
-                  transition: "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                  transition:
+                    "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "#f8fafc";
                   e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 6px rgba(0,0,0,0.08)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = "#fff";
                   e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 3px rgba(0,0,0,0.06)";
                 }}
               >
-                <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   Total income
                 </div>
-                <div style={{ padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div
+                  style={{
+                    padding: "0.875rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
-                      onClick={() => !initialLoading && handleNumberClick("Total Income", stats.totalIncome, true)}
+                      onClick={() =>
+                        !initialLoading &&
+                        handleNumberClick(
+                          "Total Income",
+                          stats.totalIncome,
+                          true,
+                        )
+                      }
                       style={{
                         color: "#0d9488",
                         fontSize: "clamp(1rem, 3vw, 1.5rem)",
@@ -1147,14 +1341,37 @@ const Income = () => {
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {initialLoading ? "..." : abbreviateNumber(stats.totalIncome, true)}
+                      {initialLoading
+                        ? "..."
+                        : abbreviateNumber(stats.totalIncome, true)}
                     </div>
-                    <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#64748b" }}>
-                      <i className="fas fa-info-circle me-1" /> Click to view full number
+                    <div
+                      style={{
+                        marginTop: "0.25rem",
+                        fontSize: "0.7rem",
+                        color: "#64748b",
+                      }}
+                    >
+                      <i className="fas fa-info-circle me-1" /> Click to view
+                      full number
                     </div>
                   </div>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "6px", backgroundColor: "#ccfbf1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-arrow-up" style={{ color: "#0d9488", fontSize: "1.1rem" }} />
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "6px",
+                      backgroundColor: "#ccfbf1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i
+                      className="fas fa-arrow-up"
+                      style={{ color: "#0d9488", fontSize: "1.1rem" }}
+                    />
                   </div>
                 </div>
               </div>
@@ -1168,26 +1385,55 @@ const Income = () => {
                   borderRadius: "6px",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   overflow: "hidden",
-                  transition: "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                  transition:
+                    "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "#f8fafc";
                   e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 6px rgba(0,0,0,0.08)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = "#fff";
                   e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 3px rgba(0,0,0,0.06)";
                 }}
               >
-                <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   Income accounts
                 </div>
-                <div style={{ padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div
+                  style={{
+                    padding: "0.875rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
-                      onClick={() => !initialLoading && handleNumberClick("Income Accounts", stats.incomeAccounts, false)}
+                      onClick={() =>
+                        !initialLoading &&
+                        handleNumberClick(
+                          "Income Accounts",
+                          stats.incomeAccounts,
+                          false,
+                        )
+                      }
                       style={{
                         color: "#334155",
                         fontSize: "clamp(1rem, 3vw, 1.5rem)",
@@ -1198,14 +1444,37 @@ const Income = () => {
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {initialLoading ? "..." : abbreviateNumber(stats.incomeAccounts, false)}
+                      {initialLoading
+                        ? "..."
+                        : abbreviateNumber(stats.incomeAccounts, false)}
                     </div>
-                    <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#64748b" }}>
-                      <i className="fas fa-info-circle me-1" /> Click to view full number
+                    <div
+                      style={{
+                        marginTop: "0.25rem",
+                        fontSize: "0.7rem",
+                        color: "#64748b",
+                      }}
+                    >
+                      <i className="fas fa-info-circle me-1" /> Click to view
+                      full number
                     </div>
                   </div>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "6px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-chart-line" style={{ color: "#64748b", fontSize: "1.1rem" }} />
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "6px",
+                      backgroundColor: "#f1f5f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i
+                      className="fas fa-chart-line"
+                      style={{ color: "#64748b", fontSize: "1.1rem" }}
+                    />
                   </div>
                 </div>
               </div>
@@ -1219,26 +1488,54 @@ const Income = () => {
                   borderRadius: "6px",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                   overflow: "hidden",
-                  transition: "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                  transition:
+                    "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = "#f8fafc";
                   e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 6px rgba(0,0,0,0.08)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = "#fff";
                   e.currentTarget.style.borderColor = "#e2e8f0";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0 1px 3px rgba(0,0,0,0.06)";
                 }}
               >
-                <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div
+                  style={{
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "#f8fafc",
+                    borderBottom: "1px solid #e2e8f0",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    color: "#64748b",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
                   Filtered results
                 </div>
-                <div style={{ padding: "0.875rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+                <div
+                  style={{
+                    padding: "0.875rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.5rem",
+                  }}
+                >
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
-                      onClick={() => handleNumberClick("Filtered Results", filteredTransactions.length, false)}
+                      onClick={() =>
+                        handleNumberClick(
+                          "Filtered Results",
+                          filteredTransactions.length,
+                          false,
+                        )
+                      }
                       style={{
                         color: "#334155",
                         fontSize: "clamp(1rem, 3vw, 1.5rem)",
@@ -1251,12 +1548,33 @@ const Income = () => {
                     >
                       {abbreviateNumber(filteredTransactions.length, false)}
                     </div>
-                    <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "#64748b" }}>
-                      <i className="fas fa-info-circle me-1" /> Click to view full number
+                    <div
+                      style={{
+                        marginTop: "0.25rem",
+                        fontSize: "0.7rem",
+                        color: "#64748b",
+                      }}
+                    >
+                      <i className="fas fa-info-circle me-1" /> Click to view
+                      full number
                     </div>
                   </div>
-                  <div style={{ width: "40px", height: "40px", borderRadius: "6px", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <i className="fas fa-filter" style={{ color: "#64748b", fontSize: "1.1rem" }} />
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "6px",
+                      backgroundColor: "#f1f5f9",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i
+                      className="fas fa-filter"
+                      style={{ color: "#64748b", fontSize: "1.1rem" }}
+                    />
                   </div>
                 </div>
               </div>
@@ -1285,15 +1603,25 @@ const Income = () => {
                 <FaCalendarAlt style={{ fontSize: "0.9rem", opacity: 0.9 }} />
                 Report period
               </h6>
-              <p className="mb-0 small text-white-50 mt-1" style={{ fontSize: "0.75rem" }}>
-                Set start and end date, then click Apply filter to update the list. Table does not change until you apply.
+              <p
+                className="mb-0 small text-white-50 mt-1"
+                style={{ fontSize: "0.75rem" }}
+              >
+                Set start and end date, then click Apply filter to update the
+                list. Table does not change until you apply.
               </p>
             </div>
-            <div className="card-body p-3 bg-light" style={{ borderTop: "1px solid #e2e8f0" }}>
+            <div
+              className="card-body p-3 bg-light"
+              style={{ borderTop: "1px solid #e2e8f0" }}
+            >
               <div className="row g-2 align-items-end">
                 <div className="col-6 col-md-3">
                   <label className="form-label small fw-600 text-secondary mb-1">
-                    <FaCalendarAlt className="me-1" style={{ fontSize: "0.8rem" }} />
+                    <FaCalendarAlt
+                      className="me-1"
+                      style={{ fontSize: "0.8rem" }}
+                    />
                     From date
                   </label>
                   <input
@@ -1344,7 +1672,11 @@ const Income = () => {
                     className="btn btn-sm btn-outline-secondary"
                     onClick={clearDates}
                     disabled={loading || isActionDisabled()}
-                    style={{ borderColor: "#cbd5e1", borderRadius: "6px", fontWeight: 600 }}
+                    style={{
+                      borderColor: "#cbd5e1",
+                      borderRadius: "6px",
+                      fontWeight: 600,
+                    }}
                   >
                     Clear dates
                   </button>
@@ -1367,12 +1699,42 @@ const Income = () => {
             <div style={{ padding: "1rem 1.25rem" }}>
               <div className="row g-3 align-items-end">
                 <div className="col-12 col-md-4 col-lg-3">
-                  <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <label
+                    className="d-block mb-1"
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
                     Search transactions
                   </label>
-                  <div style={{ display: "flex", alignItems: "stretch", border: "1px solid #e2e8f0", borderRadius: "4px", backgroundColor: "#fff", overflow: "hidden" }}>
-                    <span style={{ display: "flex", alignItems: "center", padding: "0.5rem 0.75rem", backgroundColor: "#f8fafc", color: "#64748b", borderRight: "1px solid #e2e8f0" }}>
-                      <i className="fas fa-search" style={{ fontSize: "0.875rem" }} />
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "stretch",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "4px",
+                      backgroundColor: "#fff",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "0.5rem 0.75rem",
+                        backgroundColor: "#f8fafc",
+                        color: "#64748b",
+                        borderRight: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <i
+                        className="fas fa-search"
+                        style={{ fontSize: "0.875rem" }}
+                      />
                     </span>
                     <input
                       type="text"
@@ -1405,13 +1767,25 @@ const Income = () => {
                         }}
                         title="Clear search"
                       >
-                        <i className="fas fa-times" style={{ fontSize: "0.75rem" }} />
+                        <i
+                          className="fas fa-times"
+                          style={{ fontSize: "0.75rem" }}
+                        />
                       </button>
                     )}
                   </div>
                 </div>
                 <div className="col-6 col-md-4 col-lg-2">
-                  <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <label
+                    className="d-block mb-1"
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
                     Income account
                   </label>
                   <select
@@ -1431,18 +1805,33 @@ const Income = () => {
                   >
                     <option value="all">All accounts</option>
                     {filterIncomeAccountOptions.map((account) => (
-                      <option key={String(account.account_code)} value={String(account.account_code)}>
+                      <option
+                        key={String(account.account_code)}
+                        value={String(account.account_code)}
+                      >
                         {account.account_code} – {account.account_name}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="col-6 col-md-4 col-lg-auto">
-                  <label className="d-block mb-1" style={{ fontSize: "0.7rem", fontWeight: 600, color: "transparent", userSelect: "none" }}>Action</label>
+                  <label
+                    className="d-block mb-1"
+                    style={{
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      color: "transparent",
+                      userSelect: "none",
+                    }}
+                  >
+                    Action
+                  </label>
                   <button
                     type="button"
                     onClick={clearFilters}
-                    disabled={loading || isActionDisabled() || !hasActiveFilters}
+                    disabled={
+                      loading || isActionDisabled() || !hasActiveFilters
+                    }
                     style={{
                       width: "100%",
                       padding: "0.5rem 0.875rem",
@@ -1452,13 +1841,21 @@ const Income = () => {
                       backgroundColor: "#fff",
                       border: "1px solid #e2e8f0",
                       borderRadius: "4px",
-                      cursor: hasActiveFilters && !loading ? "pointer" : "not-allowed",
+                      cursor:
+                        hasActiveFilters && !loading
+                          ? "pointer"
+                          : "not-allowed",
                       opacity: hasActiveFilters ? 1 : 0.8,
                       whiteSpace: "nowrap",
-                      transition: "background-color 0.2s ease, border-color 0.2s ease",
+                      transition:
+                        "background-color 0.2s ease, border-color 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      if (hasActiveFilters && !loading && !e.currentTarget.disabled) {
+                      if (
+                        hasActiveFilters &&
+                        !loading &&
+                        !e.currentTarget.disabled
+                      ) {
                         e.currentTarget.style.backgroundColor = "#e2e8f0";
                         e.currentTarget.style.borderColor = "#cbd5e1";
                       }
@@ -1468,7 +1865,10 @@ const Income = () => {
                       e.currentTarget.style.borderColor = "#e2e8f0";
                     }}
                   >
-                    <i className="fas fa-times me-1" style={{ fontSize: "0.75rem" }} />
+                    <i
+                      className="fas fa-times me-1"
+                      style={{ fontSize: "0.75rem" }}
+                    />
                     Clear filters
                   </button>
                 </div>
@@ -1477,244 +1877,367 @@ const Income = () => {
           </div>
 
           {/* Income by Account Summary — corporate / modern government style */}
-          {Object.keys(incomeByAccount).length > 0 && (() => {
-            const accountRows = Object.values(incomeByAccount).sort((a, b) => b.total - a.total);
-            const grandTotal = accountRows.reduce((sum, r) => sum + (parseFloat(r.total) || 0), 0);
-            return (
-              <div
-                className="mb-3"
-                style={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "6px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                  overflow: "hidden",
-                }}
-              >
+          {Object.keys(incomeByAccount).length > 0 &&
+            (() => {
+              const accountRows = Object.values(incomeByAccount).sort(
+                (a, b) => b.total - a.total,
+              );
+              const grandTotal = accountRows.reduce(
+                (sum, r) => sum + (parseFloat(r.total) || 0),
+                0,
+              );
+              return (
                 <div
+                  className="mb-3"
                   style={{
-                    padding: "0.875rem 1.25rem",
-                    background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
-                    borderBottom: "1px solid #334155",
+                    backgroundColor: "#fff",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "6px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                    overflow: "hidden",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "6px",
-                        background: "rgba(255,255,255,0.12)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <i className="fas fa-chart-pie" style={{ color: "#fff", fontSize: "0.95rem" }} />
-                    </div>
-                    <div>
-                      <h5 style={{ margin: 0, fontWeight: 600, fontSize: "1rem", color: "#fff", letterSpacing: "0.01em" }}>
-                        Income by Account
-                      </h5>
-                      <small style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.8rem" }}>
-                        Summary by revenue account
-                      </small>
-                    </div>
-                  </div>
-                </div>
-                {/* Mobile: card list (stacked) */}
-                <div className="d-block d-md-none" style={{ padding: "0.75rem" }}>
-                  {accountRows.map((item, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        padding: "0.875rem 1rem",
-                        marginBottom: index < accountRows.length - 1 ? "0.5rem" : 0,
-                        backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "6px",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
-                        <span
-                          style={{
-                            padding: "0.2rem 0.45rem",
-                            borderRadius: "4px",
-                            backgroundColor: "#f1f5f9",
-                            color: "#334155",
-                            fontWeight: 600,
-                            fontSize: "0.8125rem",
-                            fontFamily: "ui-monospace, monospace",
-                          }}
-                        >
-                          {item.account_code || "—"}
-                        </span>
-                        <span style={{ fontWeight: 600, color: "#0d9488", fontVariantNumeric: "tabular-nums", fontSize: "0.9375rem" }}>
-                          {formatCurrency(item.total)}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: "0.5rem", color: "#475569", fontSize: "0.875rem" }}>
-                        {item.account_name || "—"}
-                      </div>
-                      <div style={{ marginTop: "0.25rem", fontSize: "0.8rem", color: "#64748b" }}>
-                        {item.count} transaction{item.count !== 1 ? "s" : ""}
-                      </div>
-                    </div>
-                  ))}
                   <div
                     style={{
-                      marginTop: "0.75rem",
-                      padding: "0.875rem 1rem",
-                      backgroundColor: "#f1f5f9",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      padding: "0.875rem 1.25rem",
+                      background:
+                        "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+                      borderBottom: "1px solid #334155",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: "#334155", fontSize: "0.875rem" }}>Total</span>
-                    <span style={{ fontWeight: 600, color: "#0f766e", fontVariantNumeric: "tabular-nums", fontSize: "0.9375rem" }}>
-                      {formatCurrency(grandTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Desktop: table */}
-                <div className="d-none d-md-block" style={{ overflowX: "auto" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    <thead>
-                      <tr
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                      }}
+                    >
+                      <div
                         style={{
-                          backgroundColor: "#f8fafc",
-                          borderBottom: "2px solid #e2e8f0",
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "6px",
+                          background: "rgba(255,255,255,0.12)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
-                        <th
+                        <i
+                          className="fas fa-chart-pie"
+                          style={{ color: "#fff", fontSize: "0.95rem" }}
+                        />
+                      </div>
+                      <div>
+                        <h5
                           style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "left",
+                            margin: 0,
                             fontWeight: 600,
-                            color: "#475569",
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
+                            fontSize: "1rem",
+                            color: "#fff",
+                            letterSpacing: "0.01em",
                           }}
                         >
-                          Account Code
-                        </th>
-                        <th
+                          Income by Account
+                        </h5>
+                        <small
                           style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "left",
-                            fontWeight: 600,
-                            color: "#475569",
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
+                            color: "rgba(255,255,255,0.75)",
+                            fontSize: "0.8rem",
                           }}
                         >
-                          Account Name
-                        </th>
-                        <th
+                          Summary by revenue account
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Mobile: card list (stacked) */}
+                  <div
+                    className="d-block d-md-none"
+                    style={{ padding: "0.75rem" }}
+                  >
+                    {accountRows.map((item, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: "0.875rem 1rem",
+                          marginBottom:
+                            index < accountRows.length - 1 ? "0.5rem" : 0,
+                          backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        <div
                           style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "right",
-                            fontWeight: 600,
-                            color: "#475569",
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            flexWrap: "wrap",
+                            gap: "0.5rem",
                           }}
                         >
-                          Count
-                        </th>
-                        <th
+                          <span
+                            style={{
+                              padding: "0.2rem 0.45rem",
+                              borderRadius: "4px",
+                              backgroundColor: "#f1f5f9",
+                              color: "#334155",
+                              fontWeight: 600,
+                              fontSize: "0.8125rem",
+                              fontFamily: "ui-monospace, monospace",
+                            }}
+                          >
+                            {item.account_code || "—"}
+                          </span>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              color: "#0d9488",
+                              fontVariantNumeric: "tabular-nums",
+                              fontSize: "0.9375rem",
+                            }}
+                          >
+                            {formatCurrency(item.total)}
+                          </span>
+                        </div>
+                        <div
                           style={{
-                            padding: "0.75rem 1rem",
-                            textAlign: "right",
-                            fontWeight: 600,
+                            marginTop: "0.5rem",
                             color: "#475569",
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
+                            fontSize: "0.875rem",
                           }}
                         >
-                          Total Income
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accountRows.map((item, index) => (
+                          {item.account_name || "—"}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "0.25rem",
+                            fontSize: "0.8rem",
+                            color: "#64748b",
+                          }}
+                        >
+                          {item.count} transaction{item.count !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                    ))}
+                    <div
+                      style={{
+                        marginTop: "0.75rem",
+                        padding: "0.875rem 1rem",
+                        backgroundColor: "#f1f5f9",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "6px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "#334155",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        Total
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "#0f766e",
+                          fontVariantNumeric: "tabular-nums",
+                          fontSize: "0.9375rem",
+                        }}
+                      >
+                        {formatCurrency(grandTotal)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desktop: table */}
+                  <div
+                    className="d-none d-md-block"
+                    style={{ overflowX: "auto" }}
+                  >
+                    <table
+                      style={{
+                        width: "100%",
+                        borderCollapse: "collapse",
+                        fontSize: "0.875rem",
+                      }}
+                    >
+                      <thead>
                         <tr
-                          key={index}
                           style={{
-                            backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
-                            borderBottom: "1px solid #f1f5f9",
-                            transition: "background-color 0.15s ease",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f1f5f9";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#fff" : "#fafbfc";
+                            backgroundColor: "#f8fafc",
+                            borderBottom: "2px solid #e2e8f0",
                           }}
                         >
-                          <td style={{ padding: "0.75rem 1rem", verticalAlign: "middle" }}>
-                            <span
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            Account Code
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            Account Name
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "right",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            Count
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "right",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            Total Income
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accountRows.map((item, index) => (
+                          <tr
+                            key={index}
+                            style={{
+                              backgroundColor:
+                                index % 2 === 0 ? "#fff" : "#fafbfc",
+                              borderBottom: "1px solid #f1f5f9",
+                              transition: "background-color 0.15s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                index % 2 === 0 ? "#fff" : "#fafbfc";
+                            }}
+                          >
+                            <td
                               style={{
-                                display: "inline-block",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "4px",
-                                backgroundColor: "#f1f5f9",
-                                color: "#334155",
-                                fontWeight: 600,
-                                fontSize: "0.8125rem",
-                                fontFamily: "ui-monospace, monospace",
+                                padding: "0.75rem 1rem",
+                                verticalAlign: "middle",
                               }}
                             >
-                              {item.account_code || "—"}
-                            </span>
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  padding: "0.25rem 0.5rem",
+                                  borderRadius: "4px",
+                                  backgroundColor: "#f1f5f9",
+                                  color: "#334155",
+                                  fontWeight: 600,
+                                  fontSize: "0.8125rem",
+                                  fontFamily: "ui-monospace, monospace",
+                                }}
+                              >
+                                {item.account_code || "—"}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                color: "#334155",
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              {item.account_name || "—"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                textAlign: "right",
+                                color: "#475569",
+                                fontVariantNumeric: "tabular-nums",
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              {item.count}
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                textAlign: "right",
+                                fontWeight: 600,
+                                color: "#0d9488",
+                                fontVariantNumeric: "tabular-nums",
+                                verticalAlign: "middle",
+                              }}
+                            >
+                              {formatCurrency(item.total)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr
+                          style={{
+                            backgroundColor: "#f1f5f9",
+                            borderTop: "2px solid #e2e8f0",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <td
+                            colSpan={3}
+                            style={{
+                              padding: "0.875rem 1rem",
+                              color: "#334155",
+                              fontSize: "0.875rem",
+                            }}
+                          >
+                            Total
                           </td>
-                          <td style={{ padding: "0.75rem 1rem", color: "#334155", verticalAlign: "middle" }}>
-                            {item.account_name || "—"}
-                          </td>
-                          <td style={{ padding: "0.75rem 1rem", textAlign: "right", color: "#475569", fontVariantNumeric: "tabular-nums", verticalAlign: "middle" }}>
-                            {item.count}
-                          </td>
-                          <td style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 600, color: "#0d9488", fontVariantNumeric: "tabular-nums", verticalAlign: "middle" }}>
-                            {formatCurrency(item.total)}
+                          <td
+                            style={{
+                              padding: "0.875rem 1rem",
+                              textAlign: "right",
+                              color: "#0f766e",
+                              fontVariantNumeric: "tabular-nums",
+                              fontSize: "0.9375rem",
+                            }}
+                          >
+                            {formatCurrency(grandTotal)}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr
-                        style={{
-                          backgroundColor: "#f1f5f9",
-                          borderTop: "2px solid #e2e8f0",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <td colSpan={3} style={{ padding: "0.875rem 1rem", color: "#334155", fontSize: "0.875rem" }}>
-                          Total
-                        </td>
-                        <td style={{ padding: "0.875rem 1rem", textAlign: "right", color: "#0f766e", fontVariantNumeric: "tabular-nums", fontSize: "0.9375rem" }}>
-                          {formatCurrency(grandTotal)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           {/* Income Transactions — same corporate style as Income by Account */}
           <div
@@ -1734,7 +2257,13 @@ const Income = () => {
                 borderBottom: "1px solid #334155",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
+                }}
+              >
                 <div
                   style={{
                     width: "36px",
@@ -1746,18 +2275,40 @@ const Income = () => {
                     justifyContent: "center",
                   }}
                 >
-                  <i className="fas fa-arrow-up" style={{ color: "#fff", fontSize: "0.95rem" }} />
+                  <i
+                    className="fas fa-arrow-up"
+                    style={{ color: "#fff", fontSize: "0.95rem" }}
+                  />
                 </div>
                 <div>
-                  <h5 style={{ margin: 0, fontWeight: 600, fontSize: "1rem", color: "#fff", letterSpacing: "0.01em" }}>
+                  <h5
+                    style={{
+                      margin: 0,
+                      fontWeight: 600,
+                      fontSize: "1rem",
+                      color: "#fff",
+                      letterSpacing: "0.01em",
+                    }}
+                  >
                     Income Transactions
                     {!loading && (
-                      <span style={{ opacity: 0.9, fontWeight: 500, marginLeft: "0.35rem" }}>
+                      <span
+                        style={{
+                          opacity: 0.9,
+                          fontWeight: 500,
+                          marginLeft: "0.35rem",
+                        }}
+                      >
                         ({paginationMeta.total} total)
                       </span>
                     )}
                   </h5>
-                  <small style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.8rem" }}>
+                  <small
+                    style={{
+                      color: "rgba(255,255,255,0.75)",
+                      fontSize: "0.8rem",
+                    }}
+                  >
                     List of income entries by date
                   </small>
                 </div>
@@ -1791,20 +2342,36 @@ const Income = () => {
               ) : (
                 <>
                   {/* Mobile: card list */}
-                  <div className="d-block d-md-none" style={{ padding: "0.75rem" }}>
+                  <div
+                    className="d-block d-md-none"
+                    style={{ padding: "0.75rem" }}
+                  >
                     {currentTransactions.map((transaction, index) => (
                       <div
                         key={transaction.id}
                         style={{
                           padding: "0.875rem 1rem",
-                          marginBottom: index < currentTransactions.length - 1 ? "0.5rem" : 0,
+                          marginBottom:
+                            index < currentTransactions.length - 1
+                              ? "0.5rem"
+                              : 0,
                           backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
                           border: "1px solid #e2e8f0",
                           borderRadius: "6px",
                         }}
                       >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
-                          <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            flexWrap: "wrap",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <span
+                            style={{ fontSize: "0.8rem", color: "#64748b" }}
+                          >
                             {formatDate(transaction.date)}
                           </span>
                           <span
@@ -1815,8 +2382,21 @@ const Income = () => {
                               fontSize: "0.9375rem",
                               cursor: "pointer",
                             }}
-                            onClick={() => handleNumberClick("Amount", transaction.amount, true)}
-                            onKeyDown={(e) => e.key === "Enter" && handleNumberClick("Amount", transaction.amount, true)}
+                            onClick={() =>
+                              handleNumberClick(
+                                "Amount",
+                                transaction.amount,
+                                true,
+                              )
+                            }
+                            onKeyDown={(e) =>
+                              e.key === "Enter" &&
+                              handleNumberClick(
+                                "Amount",
+                                transaction.amount,
+                                true,
+                              )
+                            }
                             role="button"
                             tabIndex={0}
                             title={formatCurrency(transaction.amount)}
@@ -1824,7 +2404,13 @@ const Income = () => {
                             {formatCurrency(transaction.amount)}
                           </span>
                         </div>
-                        <div style={{ marginTop: "0.35rem", fontSize: "0.875rem", color: "#334155" }}>
+                        <div
+                          style={{
+                            marginTop: "0.35rem",
+                            fontSize: "0.875rem",
+                            color: "#334155",
+                          }}
+                        >
                           <span
                             style={{
                               display: "inline-block",
@@ -1842,16 +2428,47 @@ const Income = () => {
                           </span>
                           {transaction.account_name || ""}
                         </div>
-                        {(transaction.client_name || transaction.description) && (
-                          <div style={{ marginTop: "0.35rem", fontSize: "0.8125rem", color: "#475569" }} title={transaction.description || transaction.client_name}>
-                            {transaction.client_name ? `${transaction.client_name}${transaction.description ? " · " : ""}` : ""}
-                            {transaction.description ? (transaction.description.length > 50 ? `${transaction.description.slice(0, 50)}…` : transaction.description) : ""}
+                        {(transaction.client_name ||
+                          transaction.description) && (
+                          <div
+                            style={{
+                              marginTop: "0.35rem",
+                              fontSize: "0.8125rem",
+                              color: "#475569",
+                            }}
+                            title={
+                              transaction.description || transaction.client_name
+                            }
+                          >
+                            {transaction.client_name
+                              ? `${transaction.client_name}${transaction.description ? " · " : ""}`
+                              : ""}
+                            {transaction.description
+                              ? transaction.description.length > 50
+                                ? `${transaction.description.slice(0, 50)}…`
+                                : transaction.description
+                              : ""}
                           </div>
                         )}
-                        <div style={{ marginTop: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.35rem" }}>
-                          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                            {transaction.reference ? `Ref: ${transaction.reference}` : ""}
-                            {transaction.status ? ` · ${transaction.status}` : ""}
+                        <div
+                          style={{
+                            marginTop: "0.5rem",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: "0.35rem",
+                          }}
+                        >
+                          <span
+                            style={{ fontSize: "0.75rem", color: "#64748b" }}
+                          >
+                            {transaction.reference
+                              ? `Ref: ${transaction.reference}`
+                              : ""}
+                            {transaction.status
+                              ? ` · ${transaction.status}`
+                              : ""}
                           </span>
                           <button
                             type="button"
@@ -1871,7 +2488,10 @@ const Income = () => {
                               border: "none",
                             }}
                           >
-                            <FaEye className="me-1" style={{ fontSize: "0.75rem" }} />
+                            <FaEye
+                              className="me-1"
+                              style={{ fontSize: "0.75rem" }}
+                            />
                             View
                           </button>
                         </div>
@@ -1880,7 +2500,10 @@ const Income = () => {
                   </div>
 
                   {/* Desktop: table — same corporate style as Income by Account */}
-                  <div className="d-none d-md-block table-responsive income-transactions-table-wrap" style={{ overflowX: "auto" }}>
+                  <div
+                    className="d-none d-md-block table-responsive income-transactions-table-wrap"
+                    style={{ overflowX: "auto" }}
+                  >
                     <table
                       style={{
                         width: "100%",
@@ -1890,28 +2513,167 @@ const Income = () => {
                       className="mb-0"
                     >
                       <thead>
-                        <tr style={{ backgroundColor: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "center", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "4%" }}>#</th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "center", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "10%" }}>Actions</th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "12%" }}>
-                            <button type="button" className="btn btn-link p-0 border-0 text-decoration-none" onClick={() => handleSort("date")} disabled={isActionDisabled()} style={{ color: "#475569", fontWeight: 600 }}>
-                              Date <i className={`ms-1 ${getSortIcon("date")}`} />
+                        <tr
+                          style={{
+                            backgroundColor: "#f8fafc",
+                            borderBottom: "2px solid #e2e8f0",
+                          }}
+                        >
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "center",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "4%",
+                            }}
+                          >
+                            #
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "center",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "10%",
+                            }}
+                          >
+                            Actions
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "12%",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 border-0 text-decoration-none"
+                              onClick={() => handleSort("date")}
+                              disabled={isActionDisabled()}
+                              style={{ color: "#475569", fontWeight: 600 }}
+                            >
+                              Date{" "}
+                              <i className={`ms-1 ${getSortIcon("date")}`} />
                             </button>
                           </th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "15%" }}>Account</th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "15%" }}>Client</th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "20%" }}>
-                            <button type="button" className="btn btn-link p-0 border-0 text-decoration-none" onClick={() => handleSort("description")} disabled={isActionDisabled()} style={{ color: "#475569", fontWeight: 600 }}>
-                              Description <i className={`ms-1 ${getSortIcon("description")}`} />
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "15%",
+                            }}
+                          >
+                            Account
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "15%",
+                            }}
+                          >
+                            Client
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "20%",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 border-0 text-decoration-none"
+                              onClick={() => handleSort("description")}
+                              disabled={isActionDisabled()}
+                              style={{ color: "#475569", fontWeight: 600 }}
+                            >
+                              Description{" "}
+                              <i
+                                className={`ms-1 ${getSortIcon("description")}`}
+                              />
                             </button>
                           </th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "12%" }}>Reference</th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "right", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "12%" }}>
-                            <button type="button" className="btn btn-link p-0 border-0 text-decoration-none" onClick={() => handleSort("amount")} disabled={isActionDisabled()} style={{ color: "#475569", fontWeight: 600 }}>
-                              Amount <i className={`ms-1 ${getSortIcon("amount")}`} />
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "12%",
+                            }}
+                          >
+                            Reference
+                          </th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "right",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "12%",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 border-0 text-decoration-none"
+                              onClick={() => handleSort("amount")}
+                              disabled={isActionDisabled()}
+                              style={{ color: "#475569", fontWeight: 600 }}
+                            >
+                              Amount{" "}
+                              <i className={`ms-1 ${getSortIcon("amount")}`} />
                             </button>
                           </th>
-                          <th style={{ padding: "0.75rem 1rem", textAlign: "left", fontWeight: 600, color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", width: "10%" }}>Status</th>
+                          <th
+                            style={{
+                              padding: "0.75rem 1rem",
+                              textAlign: "left",
+                              fontWeight: 600,
+                              color: "#475569",
+                              fontSize: "0.75rem",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              width: "10%",
+                            }}
+                          >
+                            Status
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1919,45 +2681,191 @@ const Income = () => {
                           <tr
                             key={transaction.id}
                             style={{
-                              backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
+                              backgroundColor:
+                                index % 2 === 0 ? "#fff" : "#fafbfc",
                               borderBottom: "1px solid #f1f5f9",
                               transition: "background-color 0.15s ease",
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#fff" : "#fafbfc"; }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                index % 2 === 0 ? "#fff" : "#fafbfc";
+                            }}
                             className="align-middle"
                           >
-                            <td className="je-col-index text-center" style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#334155" }}>{startIndex + index + 1}</td>
-                            <td className="je-col-actions text-center" style={{ padding: "0.75rem 1rem" }}>
+                            <td
+                              className="je-col-index text-center"
+                              style={{
+                                padding: "0.75rem 1rem",
+                                fontWeight: 600,
+                                color: "#334155",
+                              }}
+                            >
+                              {startIndex + index + 1}
+                            </td>
+                            <td
+                              className="je-col-actions text-center"
+                              style={{ padding: "0.75rem 1rem" }}
+                            >
                               <button
                                 type="button"
                                 className="btn btn-sm"
-                                onClick={() => { setSelectedTransaction(transaction); setShowViewModal(true); }}
+                                onClick={() => {
+                                  setSelectedTransaction(transaction);
+                                  setShowViewModal(true);
+                                }}
                                 disabled={isActionDisabled()}
                                 title="View Details"
-                                style={{ width: "32px", height: "32px", borderRadius: "6px", padding: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", backgroundColor: "#0ea5e9", color: "#fff", border: "none" }}
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  borderRadius: "6px",
+                                  padding: 0,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backgroundColor: "#0ea5e9",
+                                  color: "#fff",
+                                  border: "none",
+                                }}
                               >
                                 <FaEye style={{ fontSize: "0.875rem" }} />
                               </button>
                             </td>
-                            <td style={{ padding: "0.75rem 1rem", color: "#475569" }}>{formatDate(transaction.date)}</td>
-                            <td style={{ padding: "0.75rem 1rem", maxWidth: "150px", overflow: "hidden" }}>
-                              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={`${transaction.account_code} - ${transaction.account_name}`}>
-                                <span style={{ display: "inline-block", padding: "0.2rem 0.4rem", borderRadius: "4px", backgroundColor: "#f1f5f9", color: "#334155", fontWeight: 600, fontSize: "0.8125rem", fontFamily: "ui-monospace, monospace" }}>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                color: "#475569",
+                              }}
+                            >
+                              {formatDate(transaction.date)}
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                maxWidth: "150px",
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={`${transaction.account_code} - ${transaction.account_name}`}
+                              >
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "0.2rem 0.4rem",
+                                    borderRadius: "4px",
+                                    backgroundColor: "#f1f5f9",
+                                    color: "#334155",
+                                    fontWeight: 600,
+                                    fontSize: "0.8125rem",
+                                    fontFamily: "ui-monospace, monospace",
+                                  }}
+                                >
                                   {transaction.account_code}
                                 </span>
                               </div>
-                              <div style={{ fontSize: "0.8125rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={transaction.account_name}>{transaction.account_name}</div>
+                              <div
+                                style={{
+                                  fontSize: "0.8125rem",
+                                  color: "#64748b",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={transaction.account_name}
+                              >
+                                {transaction.account_name}
+                              </div>
                             </td>
-                            <td style={{ padding: "0.75rem 1rem", color: "#334155", maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={transaction.client_name || "—"}>{transaction.client_name || "—"}</td>
-                            <td style={{ padding: "0.75rem 1rem", color: "#334155", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={transaction.description}>{transaction.description}</td>
-                            <td style={{ padding: "0.75rem 1rem", color: "#64748b", maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={transaction.reference || "—"}><code style={{ fontSize: "0.8125rem" }}>{transaction.reference || "—"}</code></td>
-                            <td className="text-end" style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#0d9488", fontVariantNumeric: "tabular-nums" }}>
-                              <span style={{ cursor: "pointer" }} onClick={() => handleNumberClick("Amount", transaction.amount, true)} onKeyDown={(e) => e.key === "Enter" && handleNumberClick("Amount", transaction.amount, true)} role="button" tabIndex={0} title={formatCurrency(transaction.amount)}>{formatCurrency(transaction.amount)}</span>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                color: "#334155",
+                                maxWidth: "150px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={transaction.client_name || "—"}
+                            >
+                              {transaction.client_name || "—"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                color: "#334155",
+                                maxWidth: "200px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={transaction.description}
+                            >
+                              {transaction.description}
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.75rem 1rem",
+                                color: "#64748b",
+                                maxWidth: "120px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                              title={transaction.reference || "—"}
+                            >
+                              <code style={{ fontSize: "0.8125rem" }}>
+                                {transaction.reference || "—"}
+                              </code>
+                            </td>
+                            <td
+                              className="text-end"
+                              style={{
+                                padding: "0.75rem 1rem",
+                                fontWeight: 600,
+                                color: "#0d9488",
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              <span
+                                style={{ cursor: "pointer" }}
+                                onClick={() =>
+                                  handleNumberClick(
+                                    "Amount",
+                                    transaction.amount,
+                                    true,
+                                  )
+                                }
+                                onKeyDown={(e) =>
+                                  e.key === "Enter" &&
+                                  handleNumberClick(
+                                    "Amount",
+                                    transaction.amount,
+                                    true,
+                                  )
+                                }
+                                role="button"
+                                tabIndex={0}
+                                title={formatCurrency(transaction.amount)}
+                              >
+                                {formatCurrency(transaction.amount)}
+                              </span>
                             </td>
                             <td style={{ padding: "0.75rem 1rem" }}>
                               {transaction.status && (
-                                <span className={`badge bg-${getStatusBadge(transaction.status)}`}>{transaction.status}</span>
+                                <span
+                                  className={`badge bg-${getStatusBadge(transaction.status)}`}
+                                >
+                                  {transaction.status}
+                                </span>
                               )}
                             </td>
                           </tr>
@@ -1965,9 +2873,34 @@ const Income = () => {
                       </tbody>
                       {filteredTransactions.length > 0 && (
                         <tfoot>
-                          <tr style={{ backgroundColor: "#f1f5f9", borderTop: "2px solid #e2e8f0", fontWeight: 600 }}>
-                            <td colSpan={8} style={{ padding: "0.875rem 1rem", color: "#334155", fontSize: "0.875rem" }}>Total</td>
-                            <td style={{ padding: "0.875rem 1rem", textAlign: "right", color: "#0f766e", fontVariantNumeric: "tabular-nums", fontSize: "0.9375rem" }}>{formatCurrency(totalIncome)}</td>
+                          <tr
+                            style={{
+                              backgroundColor: "#f1f5f9",
+                              borderTop: "2px solid #e2e8f0",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <td
+                              colSpan={8}
+                              style={{
+                                padding: "0.875rem 1rem",
+                                color: "#334155",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              Total
+                            </td>
+                            <td
+                              style={{
+                                padding: "0.875rem 1rem",
+                                textAlign: "right",
+                                color: "#0f766e",
+                                fontVariantNumeric: "tabular-nums",
+                                fontSize: "0.9375rem",
+                              }}
+                            >
+                              {formatCurrency(totalIncome)}
+                            </td>
                             <td style={{ padding: "0.875rem 1rem" }} />
                           </tr>
                         </tfoot>
@@ -2004,27 +2937,64 @@ const Income = () => {
                   style={{ padding: "0.875rem 1rem" }}
                 >
                   <div className="text-center text-md-start text-nowrap order-1 order-md-0 align-self-md-center">
-                    <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "#64748b",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
                       Showing{" "}
                     </span>
-                    <span style={{ fontWeight: 600, color: "#334155", fontVariantNumeric: "tabular-nums" }}>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#334155",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
                       {paginationMeta.from || startIndex + 1}–
                       {paginationMeta.to ||
                         Math.min(
                           startIndex + currentTransactions.length,
-                          paginationMeta.total
+                          paginationMeta.total,
                         )}
                     </span>
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}> of </span>
-                    <span style={{ fontWeight: 600, color: "#334155", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      {" "}
+                      of{" "}
+                    </span>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#334155",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
                       {paginationMeta.total}
                     </span>
-                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}> transactions</span>
+                    <span style={{ fontSize: "0.8125rem", color: "#64748b" }}>
+                      {" "}
+                      transactions
+                    </span>
                   </div>
 
                   <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-center justify-content-md-end gap-2 order-2 order-md-1 w-100 w-md-auto ms-md-auto">
-                    <div className="d-flex align-items-center justify-content-center justify-content-md-end gap-2" style={{ minWidth: "fit-content" }}>
-                      <label className="mb-0 text-nowrap" style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 600 }}>
+                    <div
+                      className="d-flex align-items-center justify-content-center justify-content-md-end gap-2"
+                      style={{ minWidth: "fit-content" }}
+                    >
+                      <label
+                        className="mb-0 text-nowrap"
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#64748b",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                          fontWeight: 600,
+                        }}
+                      >
                         Per page
                       </label>
                       <select
@@ -2056,14 +3026,29 @@ const Income = () => {
 
                     {/* Mobile: stacked */}
                     <div className="d-flex flex-column align-items-center gap-2 d-md-none w-100">
-                      <span style={{ fontSize: "0.8125rem", color: "#64748b", fontWeight: 500 }}>
-                        Page {paginationMeta.current_page} of {paginationMeta.last_page}
+                      <span
+                        style={{
+                          fontSize: "0.8125rem",
+                          color: "#64748b",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Page {paginationMeta.current_page} of{" "}
+                        {paginationMeta.last_page}
                       </span>
-                      <div className="d-flex justify-content-center gap-2 w-100" style={{ minHeight: "36px" }}>
+                      <div
+                        className="d-flex justify-content-center gap-2 w-100"
+                        style={{ minHeight: "36px" }}
+                      >
                         <button
                           type="button"
-                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                          disabled={paginationMeta.current_page === 1 || isActionDisabled()}
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                          }
+                          disabled={
+                            paginationMeta.current_page === 1 ||
+                            isActionDisabled()
+                          }
                           style={{
                             flex: 1,
                             minHeight: "36px",
@@ -2075,12 +3060,20 @@ const Income = () => {
                             backgroundColor: "#fff",
                             border: "1px solid #e2e8f0",
                             borderRadius: "4px",
-                            cursor: paginationMeta.current_page === 1 ? "not-allowed" : "pointer",
-                            opacity: paginationMeta.current_page === 1 ? 0.6 : 1,
-                            transition: "background-color 0.2s ease, border-color 0.2s ease",
+                            cursor:
+                              paginationMeta.current_page === 1
+                                ? "not-allowed"
+                                : "pointer",
+                            opacity:
+                              paginationMeta.current_page === 1 ? 0.6 : 1,
+                            transition:
+                              "background-color 0.2s ease, border-color 0.2s ease",
                           }}
                           onMouseEnter={(e) => {
-                            if (paginationMeta.current_page !== 1 && !isActionDisabled()) {
+                            if (
+                              paginationMeta.current_page !== 1 &&
+                              !isActionDisabled()
+                            ) {
                               e.currentTarget.style.backgroundColor = "#e2e8f0";
                               e.currentTarget.style.borderColor = "#cbd5e1";
                             }
@@ -2090,13 +3083,23 @@ const Income = () => {
                             e.currentTarget.style.borderColor = "#e2e8f0";
                           }}
                         >
-                          <FaChevronLeft className="me-1" style={{ verticalAlign: "middle" }} />
+                          <FaChevronLeft
+                            className="me-1"
+                            style={{ verticalAlign: "middle" }}
+                          />
                           Previous
                         </button>
                         <button
                           type="button"
-                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, paginationMeta.last_page))}
-                          disabled={paginationMeta.current_page === paginationMeta.last_page || isActionDisabled()}
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(prev + 1, paginationMeta.last_page),
+                            )
+                          }
+                          disabled={
+                            paginationMeta.current_page ===
+                              paginationMeta.last_page || isActionDisabled()
+                          }
                           style={{
                             flex: 1,
                             minHeight: "36px",
@@ -2108,12 +3111,25 @@ const Income = () => {
                             backgroundColor: "#fff",
                             border: "1px solid #e2e8f0",
                             borderRadius: "4px",
-                            cursor: paginationMeta.current_page === paginationMeta.last_page ? "not-allowed" : "pointer",
-                            opacity: paginationMeta.current_page === paginationMeta.last_page ? 0.6 : 1,
-                            transition: "background-color 0.2s ease, border-color 0.2s ease",
+                            cursor:
+                              paginationMeta.current_page ===
+                              paginationMeta.last_page
+                                ? "not-allowed"
+                                : "pointer",
+                            opacity:
+                              paginationMeta.current_page ===
+                              paginationMeta.last_page
+                                ? 0.6
+                                : 1,
+                            transition:
+                              "background-color 0.2s ease, border-color 0.2s ease",
                           }}
                           onMouseEnter={(e) => {
-                            if (paginationMeta.current_page !== paginationMeta.last_page && !isActionDisabled()) {
+                            if (
+                              paginationMeta.current_page !==
+                                paginationMeta.last_page &&
+                              !isActionDisabled()
+                            ) {
                               e.currentTarget.style.backgroundColor = "#e2e8f0";
                               e.currentTarget.style.borderColor = "#cbd5e1";
                             }
@@ -2124,17 +3140,28 @@ const Income = () => {
                           }}
                         >
                           Next
-                          <FaChevronRight className="ms-1" style={{ verticalAlign: "middle" }} />
+                          <FaChevronRight
+                            className="ms-1"
+                            style={{ verticalAlign: "middle" }}
+                          />
                         </button>
                       </div>
                     </div>
 
                     {/* Desktop: horizontal */}
-                    <div className="d-none d-md-flex align-items-center flex-wrap justify-content-end gap-2" style={{ minHeight: "36px" }}>
+                    <div
+                      className="d-none d-md-flex align-items-center flex-wrap justify-content-end gap-2"
+                      style={{ minHeight: "36px" }}
+                    >
                       <button
                         type="button"
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={paginationMeta.current_page === 1 || isActionDisabled()}
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={
+                          paginationMeta.current_page === 1 ||
+                          isActionDisabled()
+                        }
                         style={{
                           minHeight: "36px",
                           minWidth: "88px",
@@ -2145,12 +3172,19 @@ const Income = () => {
                           backgroundColor: "#fff",
                           border: "1px solid #e2e8f0",
                           borderRadius: "4px",
-                          cursor: paginationMeta.current_page === 1 ? "not-allowed" : "pointer",
+                          cursor:
+                            paginationMeta.current_page === 1
+                              ? "not-allowed"
+                              : "pointer",
                           opacity: paginationMeta.current_page === 1 ? 0.6 : 1,
-                          transition: "background-color 0.2s ease, border-color 0.2s ease",
+                          transition:
+                            "background-color 0.2s ease, border-color 0.2s ease",
                         }}
                         onMouseEnter={(e) => {
-                          if (paginationMeta.current_page !== 1 && !isActionDisabled()) {
+                          if (
+                            paginationMeta.current_page !== 1 &&
+                            !isActionDisabled()
+                          ) {
                             e.currentTarget.style.backgroundColor = "#e2e8f0";
                             e.currentTarget.style.borderColor = "#cbd5e1";
                           }
@@ -2160,7 +3194,10 @@ const Income = () => {
                           e.currentTarget.style.borderColor = "#e2e8f0";
                         }}
                       >
-                        <FaChevronLeft className="me-1" style={{ verticalAlign: "middle" }} />
+                        <FaChevronLeft
+                          className="me-1"
+                          style={{ verticalAlign: "middle" }}
+                        />
                         Previous
                       </button>
 
@@ -2170,13 +3207,26 @@ const Income = () => {
                           const maxVisiblePages = 5;
                           const totalPages = paginationMeta.last_page;
                           if (totalPages <= maxVisiblePages) {
-                            pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+                            pages = Array.from(
+                              { length: totalPages },
+                              (_, i) => i + 1,
+                            );
                           } else {
                             pages.push(1);
-                            let start = Math.max(2, paginationMeta.current_page - 1);
-                            let end = Math.min(totalPages - 1, paginationMeta.current_page + 1);
+                            let start = Math.max(
+                              2,
+                              paginationMeta.current_page - 1,
+                            );
+                            let end = Math.min(
+                              totalPages - 1,
+                              paginationMeta.current_page + 1,
+                            );
                             if (paginationMeta.current_page <= 2) end = 4;
-                            else if (paginationMeta.current_page >= totalPages - 1) start = totalPages - 3;
+                            else if (
+                              paginationMeta.current_page >=
+                              totalPages - 1
+                            )
+                              start = totalPages - 3;
                             if (start > 2) pages.push("...");
                             for (let i = start; i <= end; i++) pages.push(i);
                             if (end < totalPages - 1) pages.push("...");
@@ -2186,7 +3236,9 @@ const Income = () => {
                             <button
                               key={index}
                               type="button"
-                              onClick={() => page !== "..." && setCurrentPage(page)}
+                              onClick={() =>
+                                page !== "..." && setCurrentPage(page)
+                              }
                               disabled={page === "..." || isActionDisabled()}
                               style={{
                                 minWidth: "36px",
@@ -2195,30 +3247,48 @@ const Income = () => {
                                 fontSize: "0.8125rem",
                                 fontWeight: 600,
                                 fontVariantNumeric: "tabular-nums",
-                                color: paginationMeta.current_page === page ? "#fff" : "#334155",
-                                backgroundColor: paginationMeta.current_page === page ? "#1e293b" : "#fff",
+                                color:
+                                  paginationMeta.current_page === page
+                                    ? "#fff"
+                                    : "#334155",
+                                backgroundColor:
+                                  paginationMeta.current_page === page
+                                    ? "#1e293b"
+                                    : "#fff",
                                 border: `1px solid ${paginationMeta.current_page === page ? "#1e293b" : "#e2e8f0"}`,
                                 borderRadius: "4px",
                                 cursor: page === "..." ? "default" : "pointer",
-                                transition: "background-color 0.2s ease, border-color 0.2s ease",
+                                transition:
+                                  "background-color 0.2s ease, border-color 0.2s ease",
                               }}
                               onMouseEnter={(e) => {
-                                if (page !== "..." && !isActionDisabled() && paginationMeta.current_page !== page) {
-                                  e.currentTarget.style.backgroundColor = "#e2e8f0";
+                                if (
+                                  page !== "..." &&
+                                  !isActionDisabled() &&
+                                  paginationMeta.current_page !== page
+                                ) {
+                                  e.currentTarget.style.backgroundColor =
+                                    "#e2e8f0";
                                   e.currentTarget.style.borderColor = "#cbd5e1";
                                   e.currentTarget.style.color = "#334155";
-                                } else if (page !== "..." && paginationMeta.current_page === page) {
-                                  e.currentTarget.style.backgroundColor = "#334155";
+                                } else if (
+                                  page !== "..." &&
+                                  paginationMeta.current_page === page
+                                ) {
+                                  e.currentTarget.style.backgroundColor =
+                                    "#334155";
                                   e.currentTarget.style.borderColor = "#334155";
                                 }
                               }}
                               onMouseLeave={(e) => {
                                 if (paginationMeta.current_page === page) {
-                                  e.currentTarget.style.backgroundColor = "#1e293b";
+                                  e.currentTarget.style.backgroundColor =
+                                    "#1e293b";
                                   e.currentTarget.style.borderColor = "#1e293b";
                                   e.currentTarget.style.color = "#fff";
                                 } else {
-                                  e.currentTarget.style.backgroundColor = "#fff";
+                                  e.currentTarget.style.backgroundColor =
+                                    "#fff";
                                   e.currentTarget.style.borderColor = "#e2e8f0";
                                   e.currentTarget.style.color = "#334155";
                                 }
@@ -2232,8 +3302,15 @@ const Income = () => {
 
                       <button
                         type="button"
-                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, paginationMeta.last_page))}
-                        disabled={paginationMeta.current_page === paginationMeta.last_page || isActionDisabled()}
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, paginationMeta.last_page),
+                          )
+                        }
+                        disabled={
+                          paginationMeta.current_page ===
+                            paginationMeta.last_page || isActionDisabled()
+                        }
                         style={{
                           minHeight: "36px",
                           minWidth: "88px",
@@ -2244,12 +3321,25 @@ const Income = () => {
                           backgroundColor: "#fff",
                           border: "1px solid #e2e8f0",
                           borderRadius: "4px",
-                          cursor: paginationMeta.current_page === paginationMeta.last_page ? "not-allowed" : "pointer",
-                          opacity: paginationMeta.current_page === paginationMeta.last_page ? 0.6 : 1,
-                          transition: "background-color 0.2s ease, border-color 0.2s ease",
+                          cursor:
+                            paginationMeta.current_page ===
+                            paginationMeta.last_page
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity:
+                            paginationMeta.current_page ===
+                            paginationMeta.last_page
+                              ? 0.6
+                              : 1,
+                          transition:
+                            "background-color 0.2s ease, border-color 0.2s ease",
                         }}
                         onMouseEnter={(e) => {
-                          if (paginationMeta.current_page !== paginationMeta.last_page && !isActionDisabled()) {
+                          if (
+                            paginationMeta.current_page !==
+                              paginationMeta.last_page &&
+                            !isActionDisabled()
+                          ) {
                             e.currentTarget.style.backgroundColor = "#e2e8f0";
                             e.currentTarget.style.borderColor = "#cbd5e1";
                           }
@@ -2260,7 +3350,10 @@ const Income = () => {
                         }}
                       >
                         Next
-                        <FaChevronRight className="ms-1" style={{ verticalAlign: "middle" }} />
+                        <FaChevronRight
+                          className="ms-1"
+                          style={{ verticalAlign: "middle" }}
+                        />
                       </button>
                     </div>
                   </div>
@@ -2309,7 +3402,9 @@ const Income = () => {
                 className={`modal fade show d-block modal-backdrop-animation ${reportModalClosing ? "exit" : ""}`}
                 style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
                 tabIndex="-1"
-                onClick={(e) => e.target === e.currentTarget && handleCloseReportModal()}
+                onClick={(e) =>
+                  e.target === e.currentTarget && handleCloseReportModal()
+                }
               >
                 <div className="modal-dialog modal-dialog-centered mx-3 mx-sm-auto">
                   <div
@@ -2319,7 +3414,10 @@ const Income = () => {
                   >
                     <div
                       className="modal-header border-0 rounded-top-3 py-3 text-white"
-                      style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)" }}
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)",
+                      }}
                     >
                       <h5 className="modal-title fw-bold d-flex align-items-center gap-2">
                         <FaChartBar />
@@ -2335,7 +3433,8 @@ const Income = () => {
                     </div>
                     <div className="modal-body bg-light py-4">
                       <p className="text-muted small mb-3">
-                        Select the period for the report, then export to PDF (print) or Excel (CSV).
+                        Select the period for the report, then export to PDF
+                        (print) or Excel (CSV).
                       </p>
                       <div className="mb-3">
                         <label className="form-label fw-semibold">Period</label>
@@ -2344,7 +3443,10 @@ const Income = () => {
                           value={reportPeriod}
                           onChange={(e) => setReportPeriod(e.target.value)}
                           disabled={reportExporting}
-                          style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
+                          style={{
+                            borderColor: "#cbd5e1",
+                            borderRadius: "6px",
+                          }}
                         >
                           <option value="today">Today</option>
                           <option value="this_week">This Week</option>
@@ -2357,25 +3459,39 @@ const Income = () => {
                       {reportPeriod === "custom" && (
                         <div className="row g-2 mb-3">
                           <div className="col-6">
-                            <label className="form-label small fw-semibold">From</label>
+                            <label className="form-label small fw-semibold">
+                              From
+                            </label>
                             <input
                               type="date"
                               className="form-control form-control-sm"
                               value={reportCustomStart}
-                              onChange={(e) => setReportCustomStart(e.target.value)}
+                              onChange={(e) =>
+                                setReportCustomStart(e.target.value)
+                              }
                               disabled={reportExporting}
-                              style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
+                              style={{
+                                borderColor: "#cbd5e1",
+                                borderRadius: "6px",
+                              }}
                             />
                           </div>
                           <div className="col-6">
-                            <label className="form-label small fw-semibold">To</label>
+                            <label className="form-label small fw-semibold">
+                              To
+                            </label>
                             <input
                               type="date"
                               className="form-control form-control-sm"
                               value={reportCustomEnd}
-                              onChange={(e) => setReportCustomEnd(e.target.value)}
+                              onChange={(e) =>
+                                setReportCustomEnd(e.target.value)
+                              }
                               disabled={reportExporting}
-                              style={{ borderColor: "#cbd5e1", borderRadius: "6px" }}
+                              style={{
+                                borderColor: "#cbd5e1",
+                                borderRadius: "6px",
+                              }}
                             />
                           </div>
                         </div>
@@ -2389,7 +3505,10 @@ const Income = () => {
                           style={{ borderRadius: "6px" }}
                         >
                           {reportExporting ? (
-                            <span className="spinner-border spinner-border-sm" role="status" />
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            />
                           ) : (
                             <FaFilePdf />
                           )}
@@ -2403,7 +3522,10 @@ const Income = () => {
                           style={{ borderRadius: "6px" }}
                         >
                           {reportExporting ? (
-                            <span className="spinner-border spinner-border-sm" role="status" />
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            />
                           ) : (
                             <FaFileExcel />
                           )}
@@ -2605,16 +3727,14 @@ const IncomeFormModal = ({
                   <div className="col-md-6">
                     <label className="form-label fw-semibold">Amount *</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
                       className="form-control"
-                      value={formData.amount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, amount: e.target.value })
-                      }
+                      value={formatAmountForDisplay(formData.amount)}
+                      onChange={(e) => handleAmountChange(e.target.value)}
                       required
                       disabled={submitting}
+                      placeholder="0.00"
                     />
                   </div>
                   <div className="col-md-6">
@@ -2714,7 +3834,9 @@ const IncomeViewModal = ({ transaction, onClose }) => {
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) handleClose();
   };
-  const handleEscapeKey = (e) => { if (e.key === "Escape") handleClose(); };
+  const handleEscapeKey = (e) => {
+    if (e.key === "Escape") handleClose();
+  };
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => onClose(), 200);
@@ -2738,21 +3860,59 @@ const IncomeViewModal = ({ transaction, onClose }) => {
             className={`modal-content border-0 ${isClosing ? "modal-content-animation exit" : "modal-content-animation"}`}
             style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
           >
-            <div className="modal-header border-0 text-white" style={{ background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)" }}>
-              <div className="d-flex align-items-start gap-3" style={{ minWidth: 0 }}>
-                <div className="d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.15)" }}>
+            <div
+              className="modal-header border-0 text-white"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)",
+              }}
+            >
+              <div
+                className="d-flex align-items-start gap-3"
+                style={{ minWidth: 0 }}
+              >
+                <div
+                  className="d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "rgba(255,255,255,0.15)",
+                  }}
+                >
                   <FaEye />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div className="fw-bold" style={{ fontSize: "1.05rem", lineHeight: 1.2 }}>Income Transaction Details</div>
-                  <div className="small opacity-75" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {transaction.reference || "—"} • {formatDate(transaction.date)}
+                  <div
+                    className="fw-bold"
+                    style={{ fontSize: "1.05rem", lineHeight: 1.2 }}
+                  >
+                    Income Transaction Details
+                  </div>
+                  <div
+                    className="small opacity-75"
+                    style={{
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {transaction.reference || "—"} •{" "}
+                    {formatDate(transaction.date)}
                   </div>
                 </div>
               </div>
-              <button type="button" className="btn-close btn-close-white" onClick={handleClose} aria-label="Close" />
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={handleClose}
+                aria-label="Close"
+              />
             </div>
-            <div className="modal-body bg-light" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+            <div
+              className="modal-body bg-light"
+              style={{ maxHeight: "70vh", overflowY: "auto" }}
+            >
               <Footprint
                 createdBy={transaction.created_by_name}
                 createdAt={transaction.created_at}
@@ -2762,8 +3922,15 @@ const IncomeViewModal = ({ transaction, onClose }) => {
               <div className="row g-2 mb-3">
                 <div className="col-12 col-md-4">
                   <div className="bg-white border rounded-3 p-3 h-100">
-                    <div className="small text-muted fw-semibold mb-1">Total Amount</div>
-                    <div className="fw-bold text-success" style={{ fontSize: "1.25rem" }}>{formatCurrency(transaction.amount)}</div>
+                    <div className="small text-muted fw-semibold mb-1">
+                      Total Amount
+                    </div>
+                    <div
+                      className="fw-bold text-success"
+                      style={{ fontSize: "1.25rem" }}
+                    >
+                      {formatCurrency(transaction.amount)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2772,16 +3939,26 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                 <div className="row g-2">
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">Date</div>
-                    <div className="fw-semibold">{formatDate(transaction.date)}</div>
+                    <div className="fw-semibold">
+                      {formatDate(transaction.date)}
+                    </div>
                   </div>
                   <div className="col-12 col-md-6">
-                    <div className="small text-muted fw-semibold">Reference</div>
-                    <div className="fw-semibold">{transaction.reference || "—"}</div>
+                    <div className="small text-muted fw-semibold">
+                      Reference
+                    </div>
+                    <div className="fw-semibold">
+                      {transaction.reference || "—"}
+                    </div>
                   </div>
                   {transaction.status && (
                     <div className="col-12 col-md-6">
                       <div className="small text-muted fw-semibold">Status</div>
-                      <span className={`badge bg-${transaction.status === "paid" ? "success" : "info"}`}>{transaction.status}</span>
+                      <span
+                        className={`badge bg-${transaction.status === "paid" ? "success" : "info"}`}
+                      >
+                        {transaction.status}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -2791,23 +3968,38 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                 <div className="row g-2">
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">Account</div>
-                    <div className="fw-semibold">{transaction.account_code} — {transaction.account_name}</div>
+                    <div className="fw-semibold">
+                      {transaction.account_code} — {transaction.account_name}
+                    </div>
                   </div>
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">Client</div>
-                    <div className="fw-semibold">{transaction.client_name || "—"}</div>
+                    <div className="fw-semibold">
+                      {transaction.client_name || "—"}
+                    </div>
                   </div>
                 </div>
               </div>
-              {(transaction.description) && (
+              {transaction.description && (
                 <div className="bg-white border rounded-3 p-3 mb-3">
                   <div className="fw-semibold mb-2">Description</div>
-                  <div className="text-muted" style={{ whiteSpace: "pre-wrap" }}>{transaction.description}</div>
+                  <div
+                    className="text-muted"
+                    style={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {transaction.description}
+                  </div>
                 </div>
               )}
             </div>
             <div className="modal-footer border-top bg-white">
-              <button type="button" className="btn btn-primary text-white fw-semibold" onClick={handleClose}>Close</button>
+              <button
+                type="button"
+                className="btn btn-primary text-white fw-semibold"
+                onClick={handleClose}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

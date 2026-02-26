@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { showAlert, showToast } from "../../../services/notificationService";
-import { FaFileInvoice, FaPlus, FaTrash, FaEdit, FaEye, FaSave, FaTimes } from "react-icons/fa";
+import {
+  FaFileInvoice,
+  FaPlus,
+  FaTrash,
+  FaEdit,
+  FaEye,
+  FaSave,
+  FaTimes,
+} from "react-icons/fa";
 import Portal from "../../../components/Portal";
 import SearchableAccountSelect from "../../../components/SearchableAccountSelect";
 
@@ -35,7 +43,9 @@ const JournalEntries = () => {
 
   const fetchAccounts = async () => {
     try {
-      const data = await request("/accounting/chart-of-accounts-list?active_only=true");
+      const data = await request(
+        "/accounting/chart-of-accounts-list?active_only=true",
+      );
       setAccounts(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error("Error fetching accounts:", error);
@@ -60,7 +70,12 @@ const JournalEntries = () => {
       ...formData,
       lines: [
         ...formData.lines,
-        { account_id: "", debit_amount: "", credit_amount: "", description: "" },
+        {
+          account_id: "",
+          debit_amount: "",
+          credit_amount: "",
+          description: "",
+        },
       ],
     });
   };
@@ -109,7 +124,8 @@ const JournalEntries = () => {
       const hasCredit = parseFloat(line.credit_amount) > 0;
 
       if (!hasDebit && !hasCredit) {
-        errors[`line_${index}_amount`] = "Either debit or credit amount is required";
+        errors[`line_${index}_amount`] =
+          "Either debit or credit amount is required";
       }
 
       if (hasDebit && hasCredit) {
@@ -120,11 +136,11 @@ const JournalEntries = () => {
     // Validate DR = CR
     const totalDebit = data.lines.reduce(
       (sum, line) => sum + (parseFloat(line.debit_amount) || 0),
-      0
+      0,
     );
     const totalCredit = data.lines.reduce(
       (sum, line) => sum + (parseFloat(line.credit_amount) || 0),
-      0
+      0,
     );
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
@@ -170,7 +186,9 @@ const JournalEntries = () => {
       });
 
       showToast.success(
-        editingEntry ? "Journal entry updated successfully" : "Journal entry created successfully"
+        editingEntry
+          ? "Journal entry updated successfully"
+          : "Journal entry created successfully",
       );
       resetForm();
       fetchEntries();
@@ -188,8 +206,18 @@ const JournalEntries = () => {
       description: "",
       reference_number: "",
       lines: [
-        { account_id: "", debit_amount: "", credit_amount: "", description: "" },
-        { account_id: "", debit_amount: "", credit_amount: "", description: "" },
+        {
+          account_id: "",
+          debit_amount: "",
+          credit_amount: "",
+          description: "",
+        },
+        {
+          account_id: "",
+          debit_amount: "",
+          credit_amount: "",
+          description: "",
+        },
       ],
     });
     setFormErrors({});
@@ -210,7 +238,8 @@ const JournalEntries = () => {
       lines: entry.lines.map((line) => ({
         account_id: line.account_id.toString(),
         debit_amount: line.debit_amount > 0 ? line.debit_amount.toString() : "",
-        credit_amount: line.credit_amount > 0 ? line.credit_amount.toString() : "",
+        credit_amount:
+          line.credit_amount > 0 ? line.credit_amount.toString() : "",
         description: line.description || "",
       })),
     });
@@ -225,7 +254,7 @@ const JournalEntries = () => {
 
     const result = await showAlert.confirm(
       "Delete Journal Entry",
-      `Are you sure you want to delete entry ${entry.entry_number}? This action cannot be undone.`
+      `Are you sure you want to delete entry ${entry.entry_number}? This action cannot be undone.`,
     );
 
     if (result.isConfirmed) {
@@ -262,11 +291,11 @@ const JournalEntries = () => {
   const calculateTotals = () => {
     const totalDebit = formData.lines.reduce(
       (sum, line) => sum + (parseFloat(line.debit_amount) || 0),
-      0
+      0,
     );
     const totalCredit = formData.lines.reduce(
       (sum, line) => sum + (parseFloat(line.credit_amount) || 0),
-      0
+      0,
     );
     return { totalDebit, totalCredit };
   };
@@ -277,7 +306,10 @@ const JournalEntries = () => {
   if (loading) {
     return (
       <div className="container-fluid px-4">
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: "400px" }}
+        >
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
@@ -346,7 +378,8 @@ const JournalEntries = () => {
                             style={{ fontSize: "0.65rem" }}
                             title={entry.source_document.edit_hint}
                           >
-                            From {entry.source_document.type}: {entry.source_document.reference}
+                            From {entry.source_document.type}:{" "}
+                            {entry.source_document.reference}
                           </span>
                         )}
                       </td>
@@ -370,7 +403,11 @@ const JournalEntries = () => {
                             className="btn btn-outline-primary"
                             onClick={() => handleEdit(entry)}
                             disabled={!!entry.source_document}
-                            title={entry.source_document ? entry.source_document.edit_hint : "Edit"}
+                            title={
+                              entry.source_document
+                                ? entry.source_document.edit_hint
+                                : "Edit"
+                            }
                           >
                             <FaEdit />
                           </button>
@@ -378,7 +415,11 @@ const JournalEntries = () => {
                             className="btn btn-outline-danger"
                             onClick={() => handleDelete(entry)}
                             disabled={!!entry.source_document}
-                            title={entry.source_document ? entry.source_document.edit_hint : "Delete"}
+                            title={
+                              entry.source_document
+                                ? entry.source_document.edit_hint
+                                : "Delete"
+                            }
                           >
                             <FaTrash />
                           </button>
@@ -415,7 +456,10 @@ const JournalEntries = () => {
 
       {/* View Modal */}
       {viewingEntry && (
-        <JournalEntryViewModal entry={viewingEntry} onClose={() => setViewingEntry(null)} />
+        <JournalEntryViewModal
+          entry={viewingEntry}
+          onClose={() => setViewingEntry(null)}
+        />
       )}
     </div>
   );
@@ -454,7 +498,11 @@ const JournalEntryFormModal = ({
                 <FaFileInvoice className="me-2" />
                 {editingEntry ? "Edit Journal Entry" : "New Journal Entry"}
               </h5>
-              <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={onClose}
+              ></button>
             </div>
             <form onSubmit={onSubmit}>
               <div className="modal-body">
@@ -465,7 +513,9 @@ const JournalEntryFormModal = ({
                       type="date"
                       className="form-control"
                       value={formData.entry_date}
-                      onChange={(e) => setFormData({ ...formData, entry_date: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, entry_date: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -475,11 +525,18 @@ const JournalEntryFormModal = ({
                       type="text"
                       className={`form-control ${formErrors.description ? "is-invalid" : ""}`}
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
                       required
                     />
                     {formErrors.description && (
-                      <div className="invalid-feedback">{formErrors.description}</div>
+                      <div className="invalid-feedback">
+                        {formErrors.description}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -490,7 +547,12 @@ const JournalEntryFormModal = ({
                       type="text"
                       className="form-control"
                       value={formData.reference_number}
-                      onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          reference_number: e.target.value,
+                        })
+                      }
                       placeholder="Optional"
                     />
                   </div>
@@ -532,7 +594,9 @@ const JournalEntryFormModal = ({
                                   }
                                   required
                                   disabled={submitting}
-                                  invalid={!!formErrors[`line_${index}_account`]}
+                                  invalid={
+                                    !!formErrors[`line_${index}_account`]
+                                  }
                                   size="sm"
                                   placeholder="Search by code or name..."
                                 />
@@ -548,10 +612,18 @@ const JournalEntryFormModal = ({
                                   step="0.01"
                                   min="0"
                                   className={`form-control form-control-sm ${
-                                    formErrors[`line_${index}_amount`] ? "is-invalid" : ""
+                                    formErrors[`line_${index}_amount`]
+                                      ? "is-invalid"
+                                      : ""
                                   }`}
                                   value={line.debit_amount}
-                                  onChange={(e) => onLineChange(index, "debit_amount", e.target.value)}
+                                  onChange={(e) =>
+                                    onLineChange(
+                                      index,
+                                      "debit_amount",
+                                      e.target.value,
+                                    )
+                                  }
                                   placeholder="0.00"
                                 />
                               </td>
@@ -561,10 +633,18 @@ const JournalEntryFormModal = ({
                                   step="0.01"
                                   min="0"
                                   className={`form-control form-control-sm ${
-                                    formErrors[`line_${index}_amount`] ? "is-invalid" : ""
+                                    formErrors[`line_${index}_amount`]
+                                      ? "is-invalid"
+                                      : ""
                                   }`}
                                   value={line.credit_amount}
-                                  onChange={(e) => onLineChange(index, "credit_amount", e.target.value)}
+                                  onChange={(e) =>
+                                    onLineChange(
+                                      index,
+                                      "credit_amount",
+                                      e.target.value,
+                                    )
+                                  }
                                   placeholder="0.00"
                                 />
                                 {formErrors[`line_${index}_amount`] && (
@@ -578,7 +658,13 @@ const JournalEntryFormModal = ({
                                   type="text"
                                   className="form-control form-control-sm"
                                   value={line.description}
-                                  onChange={(e) => onLineChange(index, "description", e.target.value)}
+                                  onChange={(e) =>
+                                    onLineChange(
+                                      index,
+                                      "description",
+                                      e.target.value,
+                                    )
+                                  }
                                   placeholder="Optional"
                                 />
                               </td>
@@ -602,21 +688,34 @@ const JournalEntryFormModal = ({
                               <strong>Totals:</strong>
                             </td>
                             <td className="text-end">
-                              <strong className={isBalanced ? "text-danger" : "text-danger"}>
+                              <strong
+                                className={
+                                  isBalanced ? "text-danger" : "text-danger"
+                                }
+                              >
                                 {totalDebit.toFixed(2)}
                               </strong>
                             </td>
                             <td className="text-end">
-                              <strong className={isBalanced ? "text-success" : "text-danger"}>
+                              <strong
+                                className={
+                                  isBalanced ? "text-success" : "text-danger"
+                                }
+                              >
                                 {totalCredit.toFixed(2)}
                               </strong>
                             </td>
                             <td colSpan="2">
                               {isBalanced ? (
-                                <span className="badge bg-success">Balanced</span>
+                                <span className="badge bg-success">
+                                  Balanced
+                                </span>
                               ) : (
                                 <span className="badge bg-danger">
-                                  Difference: {Math.abs(totalDebit - totalCredit).toFixed(2)}
+                                  Difference:{" "}
+                                  {Math.abs(totalDebit - totalCredit).toFixed(
+                                    2,
+                                  )}
                                 </span>
                               )}
                             </td>
@@ -625,13 +724,20 @@ const JournalEntryFormModal = ({
                       </table>
                     </div>
                     {formErrors.balance && (
-                      <div className="alert alert-danger mt-2">{formErrors.balance}</div>
+                      <div className="alert alert-danger mt-2">
+                        {formErrors.balance}
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={onClose} disabled={submitting}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={onClose}
+                  disabled={submitting}
+                >
                   <FaTimes className="me-2" />
                   Cancel
                 </button>
@@ -642,7 +748,10 @@ const JournalEntryFormModal = ({
                 >
                   {submitting ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                      ></span>
                       Saving...
                     </>
                   ) : (
@@ -695,7 +804,11 @@ const JournalEntryViewModal = ({ entry, onClose }) => {
                 <FaEye className="me-2" />
                 Journal Entry Details
               </h5>
-              <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={onClose}
+              ></button>
             </div>
             <div className="modal-body">
               <div className="row mb-3">
@@ -732,13 +845,18 @@ const JournalEntryViewModal = ({ entry, onClose }) => {
                     {entry.lines?.map((line, index) => (
                       <tr key={index}>
                         <td>
-                          {line.account?.account_code} - {line.account?.account_name}
+                          {line.account?.account_code} -{" "}
+                          {line.account?.account_name}
                         </td>
                         <td className="text-end text-danger">
-                          {line.debit_amount > 0 ? formatCurrency(line.debit_amount) : "-"}
+                          {line.debit_amount > 0
+                            ? formatCurrency(line.debit_amount)
+                            : "-"}
                         </td>
                         <td className="text-end text-success">
-                          {line.credit_amount > 0 ? formatCurrency(line.credit_amount) : "-"}
+                          {line.credit_amount > 0
+                            ? formatCurrency(line.credit_amount)
+                            : "-"}
                         </td>
                         <td>{line.description || "-"}</td>
                       </tr>
@@ -750,10 +868,14 @@ const JournalEntryViewModal = ({ entry, onClose }) => {
                         <strong>Totals:</strong>
                       </td>
                       <td className="text-end">
-                        <strong className="text-danger">{formatCurrency(entry.total_debit)}</strong>
+                        <strong className="text-danger">
+                          {formatCurrency(entry.total_debit)}
+                        </strong>
                       </td>
                       <td className="text-end">
-                        <strong className="text-success">{formatCurrency(entry.total_credit)}</strong>
+                        <strong className="text-success">
+                          {formatCurrency(entry.total_credit)}
+                        </strong>
                       </td>
                       <td></td>
                     </tr>
@@ -762,7 +884,11 @@ const JournalEntryViewModal = ({ entry, onClose }) => {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={onClose}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onClose}
+              >
                 Close
               </button>
             </div>
@@ -774,4 +900,3 @@ const JournalEntryViewModal = ({ entry, onClose }) => {
 };
 
 export default JournalEntries;
-

@@ -394,7 +394,7 @@ const JournalEntries = () => {
     setShowForm(false);
   };
 
-  const handleEdit = (entry) => {
+  const handleEdit = async (entry) => {
     if (isActionDisabled()) {
       showToast.warning("Please wait until the current action completes");
       return;
@@ -403,28 +403,42 @@ const JournalEntries = () => {
       showToast.warning(entry.source_document.edit_hint);
       return;
     }
-    setEditingEntry(entry);
-    // Normalize entry_date to YYYY-MM-DD for <input type="date"> (API may return ISO string)
-    const rawDate = entry.entry_date;
-    const entryDate =
-      typeof rawDate === "string"
-        ? rawDate.slice(0, 10)
-        : rawDate instanceof Date
-        ? rawDate.toISOString().slice(0, 10)
-        : rawDate;
-    setFormData({
-      entry_date: entryDate || new Date().toISOString().split("T")[0],
-      description: entry.description,
-      reference_number: entry.reference_number || "",
-      lines: entry.lines.map((line) => ({
-        account_id: line.account_id.toString(),
-        debit_amount: line.debit_amount > 0 ? line.debit_amount.toString() : "",
-        credit_amount:
-          line.credit_amount > 0 ? line.credit_amount.toString() : "",
-        description: line.description || "",
-      })),
-    });
-    setShowForm(true);
+    try {
+      setActionLock(true);
+      // Fetch full entry with lines from the API so the listing endpoint
+      // can remain lightweight and fast.
+      const fullEntry = await request(
+        `/accounting/journal-entries/${entry.id}`
+      );
+      setEditingEntry(fullEntry);
+      // Normalize entry_date to YYYY-MM-DD for <input type="date"> (API may return ISO string)
+      const rawDate = fullEntry.entry_date;
+      const entryDate =
+        typeof rawDate === "string"
+          ? rawDate.slice(0, 10)
+          : rawDate instanceof Date
+          ? rawDate.toISOString().slice(0, 10)
+          : rawDate;
+      setFormData({
+        entry_date: entryDate || new Date().toISOString().split("T")[0],
+        description: fullEntry.description,
+        reference_number: fullEntry.reference_number || "",
+        lines: (fullEntry.lines || []).map((line) => ({
+          account_id: line.account_id.toString(),
+          debit_amount:
+            line.debit_amount > 0 ? line.debit_amount.toString() : "",
+          credit_amount:
+            line.credit_amount > 0 ? line.credit_amount.toString() : "",
+          description: line.description || "",
+        })),
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error("Error loading entry details:", error);
+      showToast.error(error.message || "Failed to load journal entry details");
+    } finally {
+      setActionLock(false);
+    }
   };
 
   const doDeleteJournalEntry = async (entry, payload) => {
