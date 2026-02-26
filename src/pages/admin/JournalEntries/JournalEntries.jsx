@@ -537,13 +537,24 @@ const JournalEntries = () => {
     }
   };
 
-  const handleViewDetails = (entry) => {
+  const handleViewDetails = async (entry) => {
     if (isActionDisabled()) {
       showToast.warning("Please wait until the current action completes");
       return;
     }
-    // List already has entry with lines + footprint from API; open modal instantly
-    setViewingEntry(entry);
+    try {
+      setActionLock(true);
+      // Fetch full entry with lines + footprint from API for details modal
+      const fullEntry = await request(
+        `/accounting/journal-entries/${entry.id}`
+      );
+      setViewingEntry(fullEntry);
+    } catch (error) {
+      console.error("Error loading entry details:", error);
+      showToast.error(error.message || "Failed to load journal entry details");
+    } finally {
+      setActionLock(false);
+    }
   };
 
   const formatCurrency = (amount) => {
