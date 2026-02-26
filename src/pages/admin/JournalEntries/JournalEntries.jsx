@@ -136,7 +136,9 @@ const JournalEntries = () => {
     try {
       setLoading(true);
       setInitialLoading(true);
-      const data = await request("/accounting/journal-entries?per_page=1000");
+      // Use a reasonable page size to avoid stressing the server while still
+      // allowing the client-side date filtering UX to work smoothly.
+      const data = await request("/accounting/journal-entries?per_page=200");
       const entriesList = Array.isArray(data) ? data : (data?.data || []);
       setEntries(entriesList);
 
