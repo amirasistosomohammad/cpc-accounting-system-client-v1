@@ -395,7 +395,7 @@ const JournalEntries = () => {
   };
 
   const handleEdit = async (entry) => {
-    if (isActionDisabled()) {
+    if (isActionDisabled(entry.id)) {
       showToast.warning("Please wait until the current action completes");
       return;
     }
@@ -404,7 +404,7 @@ const JournalEntries = () => {
       return;
     }
     try {
-      setActionLock(true);
+      setActionLoading(entry.id);
       // Fetch full entry with lines from the API so the listing endpoint
       // can remain lightweight and fast.
       const fullEntry = await request(
@@ -437,7 +437,7 @@ const JournalEntries = () => {
       console.error("Error loading entry details:", error);
       showToast.error(error.message || "Failed to load journal entry details");
     } finally {
-      setActionLock(false);
+      setActionLoading(null);
     }
   };
 
@@ -538,12 +538,12 @@ const JournalEntries = () => {
   };
 
   const handleViewDetails = async (entry) => {
-    if (isActionDisabled()) {
+    if (isActionDisabled(entry.id)) {
       showToast.warning("Please wait until the current action completes");
       return;
     }
     try {
-      setActionLock(true);
+      setActionLoading(entry.id);
       // Fetch full entry with lines + footprint from API for details modal
       const fullEntry = await request(
         `/accounting/journal-entries/${entry.id}`
@@ -553,7 +553,7 @@ const JournalEntries = () => {
       console.error("Error loading entry details:", error);
       showToast.error(error.message || "Failed to load journal entry details");
     } finally {
-      setActionLock(false);
+      setActionLoading(null);
     }
   };
 
@@ -1881,7 +1881,7 @@ const JournalEntries = () => {
                               <button
                                 className="btn btn-info btn-sm text-white"
                                 onClick={() => handleViewDetails(entry)}
-                                disabled={isActionDisabled()}
+                                disabled={isActionDisabled(entry.id)}
                                 title="View Details"
                                 style={{
                                   width: "32px",
@@ -1906,12 +1906,19 @@ const JournalEntries = () => {
                                   e.target.style.boxShadow = "none";
                                 }}
                               >
-                                <FaEye style={{ fontSize: "0.875rem" }} />
+                                {actionLoading === entry.id ? (
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
+                                ) : (
+                                  <FaEye style={{ fontSize: "0.875rem" }} />
+                                )}
                               </button>
                               <button
                                 className="btn btn-success btn-sm text-white"
                                 onClick={() => handleEdit(entry)}
-                                disabled={isActionDisabled() || !!entry.source_document}
+                                disabled={isActionDisabled(entry.id) || !!entry.source_document}
                                 title={entry.source_document ? entry.source_document.edit_hint : "Edit Entry"}
                                 style={{
                                   width: "32px",
@@ -1936,7 +1943,14 @@ const JournalEntries = () => {
                                   e.target.style.boxShadow = "none";
                                 }}
                               >
-                                <FaEdit style={{ fontSize: "0.875rem" }} />
+                                {actionLoading === entry.id ? (
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
+                                ) : (
+                                  <FaEdit style={{ fontSize: "0.875rem" }} />
+                                )}
                               </button>
                               <button
                                 className="btn btn-danger btn-sm text-white"
