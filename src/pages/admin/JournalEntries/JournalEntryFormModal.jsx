@@ -36,7 +36,7 @@ const JournalEntryFormModal = ({
 
   const formatAmountForDisplay = (value) => {
     if (value === null || value === undefined) return "";
-    const rawOriginal = String(value).replace(/,/g, ".");
+    const rawOriginal = String(value);
     if (!rawOriginal) return "";
 
     const dotCount = (rawOriginal.match(/\./g) || []).length;
@@ -115,7 +115,7 @@ const JournalEntryFormModal = ({
         "Unsaved Changes",
         "You have unsaved journal entry data. Are you sure you want to close without saving?",
         "Yes, Close",
-        "Continue Editing"
+        "Continue Editing",
       );
 
       if (!result.isConfirmed) {
@@ -167,7 +167,7 @@ const JournalEntryFormModal = ({
       // If submission succeeds, parent will reset formData, triggering recalculation
       setHasUnsavedChanges(false);
     },
-    [onSubmit]
+    [onSubmit],
   );
 
   // Handle add line with animation
@@ -201,7 +201,7 @@ const JournalEntryFormModal = ({
         });
       }, 300); // Match animation duration
     },
-    [onRemoveLine]
+    [onRemoveLine],
   );
 
   return (
@@ -571,8 +571,8 @@ const JournalEntryFormModal = ({
                             const animationClass = isRemoving
                               ? "row-slide-out"
                               : isNewlyAdded
-                              ? "row-slide-in"
-                              : "";
+                                ? "row-slide-in"
+                                : "";
 
                             return (
                               <tr
@@ -590,12 +590,14 @@ const JournalEntryFormModal = ({
                                       onLineChange(
                                         index,
                                         "account_id",
-                                        accountId
+                                        accountId,
                                       )
                                     }
                                     required
                                     disabled={submitting}
-                                    invalid={!!formErrors[`line_${index}_account`]}
+                                    invalid={
+                                      !!formErrors[`line_${index}_account`]
+                                    }
                                     size="sm"
                                     placeholder="Search by code or name..."
                                   />
@@ -615,13 +617,13 @@ const JournalEntryFormModal = ({
                                         : ""
                                     }`}
                                     value={formatAmountForDisplay(
-                                      line.debit_amount
+                                      line.debit_amount,
                                     )}
                                     onChange={(e) =>
                                       handleLineAmountChange(
                                         index,
                                         "debit_amount",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="0.00"
@@ -638,13 +640,13 @@ const JournalEntryFormModal = ({
                                         : ""
                                     }`}
                                     value={formatAmountForDisplay(
-                                      line.credit_amount
+                                      line.credit_amount,
                                     )}
                                     onChange={(e) =>
                                       handleLineAmountChange(
                                         index,
                                         "credit_amount",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="0.00"
@@ -665,7 +667,7 @@ const JournalEntryFormModal = ({
                                       onLineChange(
                                         index,
                                         "description",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="Optional"
@@ -723,7 +725,7 @@ const JournalEntryFormModal = ({
                                   <i className="fas fa-exclamation-triangle me-1"></i>
                                   Difference:{" "}
                                   {Math.abs(totalDebit - totalCredit).toFixed(
-                                    2
+                                    2,
                                   )}
                                 </span>
                               )}
@@ -741,8 +743,8 @@ const JournalEntryFormModal = ({
                         const animationClass = isRemoving
                           ? "row-slide-out"
                           : isNewlyAdded
-                          ? "row-slide-in"
-                          : "";
+                            ? "row-slide-in"
+                            : "";
                         return (
                           <div
                             key={index}
@@ -774,15 +776,13 @@ const JournalEntryFormModal = ({
                                   accounts={accounts}
                                   value={line.account_id}
                                   onChange={(accountId) =>
-                                    onLineChange(
-                                      index,
-                                      "account_id",
-                                      accountId
-                                    )
+                                    onLineChange(index, "account_id", accountId)
                                   }
                                   required
                                   disabled={submitting}
-                                  invalid={!!formErrors[`line_${index}_account`]}
+                                  invalid={
+                                    !!formErrors[`line_${index}_account`]
+                                  }
                                   size="sm"
                                   placeholder="Search by code or name..."
                                 />
@@ -806,13 +806,13 @@ const JournalEntryFormModal = ({
                                         : ""
                                     }`}
                                     value={formatAmountForDisplay(
-                                      line.debit_amount
+                                      line.debit_amount,
                                     )}
                                     onChange={(e) =>
                                       handleLineAmountChange(
                                         index,
                                         "debit_amount",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="0.00"
@@ -832,13 +832,13 @@ const JournalEntryFormModal = ({
                                         : ""
                                     }`}
                                     value={formatAmountForDisplay(
-                                      line.credit_amount
+                                      line.credit_amount,
                                     )}
                                     onChange={(e) =>
                                       handleLineAmountChange(
                                         index,
                                         "credit_amount",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     placeholder="0.00"
@@ -863,7 +863,7 @@ const JournalEntryFormModal = ({
                                     onLineChange(
                                       index,
                                       "description",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   placeholder="Optional"
@@ -919,7 +919,7 @@ const JournalEntryFormModal = ({
                       (() => {
                         const balanceError = formErrors.balance;
                         const match = balanceError.match(
-                          /Debits \(([\d,]+\.\d+)\) must equal Credits \(([\d,]+\.\d+)\)/
+                          /Debits \(([\d,]+\.\d+)\) must equal Credits \(([\d,]+\.\d+)\)/,
                         );
 
                         return (

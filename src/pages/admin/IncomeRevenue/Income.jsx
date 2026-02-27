@@ -253,36 +253,14 @@ const Income = () => {
   // --- Currency input helpers (match Journal Entry modal behavior) ---
   const formatAmountForDisplay = (value) => {
     if (value === null || value === undefined) return "";
-    const rawOriginal = String(value).replace(/,/g, ".");
-    if (!rawOriginal) return "";
-
-    // Allow user to see a trailing decimal while typing (e.g. "123.")
-    const dotCount = (rawOriginal.match(/\./g) || []).length;
-    const hasTrailingDotOnly =
-      rawOriginal.endsWith(".") && dotCount === 1;
-
-    if (rawOriginal === ".") {
-      return "0.";
-    }
-
-    const [intPartRaw, decPartRaw] = rawOriginal.split(".");
+    const raw = String(value);
+    if (!raw) return "";
+    const [intPartRaw, decPartRaw] = raw.split(".");
     const intDigits = intPartRaw.replace(/\D/g, "");
-
-    if (!intDigits) {
-      if (decPartRaw !== undefined && decPartRaw !== "") {
-        return `0.${decPartRaw}`;
-      }
-      return hasTrailingDotOnly ? "0." : "";
-    }
-
+    if (!intDigits) return decPartRaw ? `0.${decPartRaw}` : "";
     const intNumber = Number(intDigits);
-    if (!Number.isFinite(intNumber)) return rawOriginal;
+    if (!Number.isFinite(intNumber)) return raw;
     const formattedInt = intNumber.toLocaleString("en-PH");
-
-    if (hasTrailingDotOnly) {
-      return `${formattedInt}.`;
-    }
-
     return decPartRaw !== undefined && decPartRaw !== ""
       ? `${formattedInt}.${decPartRaw}`
       : formattedInt;
@@ -291,7 +269,7 @@ const Income = () => {
   const handleAmountChange = (input) => {
     let cleaned = (input || "")
       .toString()
-      .replace(/,/g, ".")
+      .replace(/,/g, "")
       .replace(/[^0-9.]/g, "");
     const parts = cleaned.split(".");
     if (parts.length > 2) {

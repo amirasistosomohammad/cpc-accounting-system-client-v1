@@ -4996,7 +4996,7 @@ const InvoiceFormModal = ({
 
   const formatAmountForDisplay = (value) => {
     if (value === null || value === undefined) return "";
-    const rawOriginal = String(value).replace(/,/g, ".");
+    const rawOriginal = String(value);
     if (!rawOriginal) return "";
 
     const dotCount = (rawOriginal.match(/\./g) || []).length;
@@ -5032,8 +5032,7 @@ const InvoiceFormModal = ({
 
   const handleAmountChange = (e) => {
     const input = e.target.value || "";
-    // Normalize comma to dot so both `.` and `,` work for decimal
-    let cleaned = input.replace(/,/g, ".").replace(/[^0-9.]/g, "");
+    let cleaned = input.replace(/,/g, "").replace(/[^0-9.]/g, "");
     const parts = cleaned.split(".");
     if (parts.length > 2) {
       cleaned = `${parts[0]}.${parts.slice(1).join("")}`;

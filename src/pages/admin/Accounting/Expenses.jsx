@@ -82,35 +82,14 @@ const Expenses = () => {
   // --- Currency input helpers (match Journal Entry / Income behavior) ---
   const formatAmountForDisplay = (value) => {
     if (value === null || value === undefined) return "";
-    const rawOriginal = String(value).replace(/,/g, ".");
-    if (!rawOriginal) return "";
-
-    const dotCount = (rawOriginal.match(/\./g) || []).length;
-    const hasTrailingDotOnly =
-      rawOriginal.endsWith(".") && dotCount === 1;
-
-    if (rawOriginal === ".") {
-      return "0.";
-    }
-
-    const [intPartRaw, decPartRaw] = rawOriginal.split(".");
+    const raw = String(value);
+    if (!raw) return "";
+    const [intPartRaw, decPartRaw] = raw.split(".");
     const intDigits = intPartRaw.replace(/\D/g, "");
-
-    if (!intDigits) {
-      if (decPartRaw !== undefined && decPartRaw !== "") {
-        return `0.${decPartRaw}`;
-      }
-      return hasTrailingDotOnly ? "0." : "";
-    }
-
+    if (!intDigits) return decPartRaw ? `0.${decPartRaw}` : "";
     const intNumber = Number(intDigits);
-    if (!Number.isFinite(intNumber)) return rawOriginal;
+    if (!Number.isFinite(intNumber)) return raw;
     const formattedInt = intNumber.toLocaleString("en-PH");
-
-    if (hasTrailingDotOnly) {
-      return `${formattedInt}.`;
-    }
-
     return decPartRaw !== undefined && decPartRaw !== ""
       ? `${formattedInt}.${decPartRaw}`
       : formattedInt;
@@ -119,7 +98,7 @@ const Expenses = () => {
   const handleAmountChange = (input) => {
     let cleaned = (input || "")
       .toString()
-      .replace(/,/g, ".")
+      .replace(/,/g, "")
       .replace(/[^0-9.]/g, "");
     const parts = cleaned.split(".");
     if (parts.length > 2) {
@@ -786,7 +765,7 @@ const Expenses = () => {
             <span>Period:</span> ${label}
             <span>Total Transactions:</span> ${list.length}
             <span>Total Expenses:</span> ${formatCurrency(totalExpenses)}
-          </div>
+        </div>
           <div class="section-title">Summary by Account</div>
           <table>
             <thead>
@@ -954,15 +933,15 @@ const Expenses = () => {
                 className="h4 mb-1 fw-bold"
                 style={{ color: "var(--text-primary)" }}
               >
-                <FaArrowDown className="me-2" />
-                Expenses
-              </h1>
+            <FaArrowDown className="me-2" />
+            Expenses
+          </h1>
               <p className="mb-0 small" style={{ color: "var(--text-muted)" }}>
                 Track all expense transactions
               </p>
-            </div>
+        </div>
             <div className="d-flex align-items-center gap-2 flex-wrap">
-              <button
+        <button
                 type="button"
                 className="btn btn-sm"
                 onClick={fetchExpenseTransactions}
@@ -1016,9 +995,9 @@ const Expenses = () => {
               >
                 <FaChartBar style={{ fontSize: "0.875rem" }} />
                 Generate Report
-              </button>
+        </button>
             </div>
-          </div>
+      </div>
 
           {/* Statistics panels — same structure as Income (4 panels) with hover */}
           <div className="row g-3 mb-4">
@@ -1060,7 +1039,7 @@ const Expenses = () => {
                   }}
                 >
                   Total transactions
-                </div>
+            </div>
                 <div
                   style={{
                     padding: "0.875rem 1rem",
@@ -1093,7 +1072,7 @@ const Expenses = () => {
                       {initialLoading
                         ? "..."
                         : abbreviateNumber(stats.totalTransactions, false)}
-                    </div>
+          </div>
                     <div
                       style={{
                         marginTop: "0.25rem",
@@ -1103,8 +1082,8 @@ const Expenses = () => {
                     >
                       <i className="fas fa-info-circle me-1" /> Click to view
                       full number
-                    </div>
-                  </div>
+        </div>
+            </div>
                   <div
                     style={{
                       width: "40px",
@@ -1121,10 +1100,10 @@ const Expenses = () => {
                       className="fas fa-file-invoice"
                       style={{ color: "#64748b", fontSize: "1.1rem" }}
                     />
-                  </div>
-                </div>
-              </div>
+          </div>
+        </div>
             </div>
+          </div>
             <div className="col-6 col-md-3">
               <div
                 className="h-100"
@@ -1430,8 +1409,8 @@ const Expenses = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+        </div>
+      </div>
 
           {/* Report period — separate panel like Journal Entries / Income */}
           <div
@@ -1475,7 +1454,7 @@ const Expenses = () => {
                       style={{ fontSize: "0.8rem" }}
                     />
                     From date
-                  </label>
+              </label>
                   <input
                     type="date"
                     className="form-control form-control-sm"
@@ -1588,10 +1567,10 @@ const Expenses = () => {
                         style={{ fontSize: "0.875rem" }}
                       />
                     </span>
-                    <input
-                      type="text"
+              <input
+                type="text"
                       placeholder="Supplier, description, reference..."
-                      value={searchTerm}
+                value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       disabled={loading || isActionDisabled()}
                       style={{
@@ -1625,7 +1604,7 @@ const Expenses = () => {
                         />
                       </button>
                     )}
-                  </div>
+            </div>
                 </div>
                 <div className="col-6 col-md-4 col-lg-2">
                   <label
@@ -1639,10 +1618,10 @@ const Expenses = () => {
                     }}
                   >
                     Expense account
-                  </label>
-                  <select
-                    value={filterAccount}
-                    onChange={(e) => setFilterAccount(e.target.value)}
+              </label>
+              <select
+                value={filterAccount}
+                onChange={(e) => setFilterAccount(e.target.value)}
                     disabled={loading || isActionDisabled()}
                     style={{
                       width: "100%",
@@ -1662,10 +1641,10 @@ const Expenses = () => {
                         value={String(account.account_code)}
                       >
                         {account.account_code} – {account.account_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  </option>
+                ))}
+              </select>
+            </div>
                 <div className="col-6 col-md-4 col-lg-auto">
                   <label
                     className="d-block mb-1"
@@ -1723,7 +1702,7 @@ const Expenses = () => {
                     />{" "}
                     Clear filters
                   </button>
-                </div>
+            </div>
               </div>
             </div>
           </div>
@@ -1778,8 +1757,8 @@ const Expenses = () => {
                         <i
                           className="fas fa-chart-pie"
                           style={{ color: "#fff", fontSize: "0.95rem" }}
-                        />
-                      </div>
+              />
+            </div>
                       <div>
                         <h5
                           style={{
@@ -1800,9 +1779,9 @@ const Expenses = () => {
                         >
                           Summary by expense account
                         </small>
-                      </div>
-                    </div>
-                  </div>
+          </div>
+        </div>
+      </div>
                   <div
                     className="d-block d-md-none"
                     style={{ padding: "0.75rem" }}
@@ -1851,7 +1830,7 @@ const Expenses = () => {
                           >
                             {formatCurrency(item.total)}
                           </span>
-                        </div>
+          </div>
                         <div
                           style={{
                             marginTop: "0.5rem",
@@ -1916,7 +1895,7 @@ const Expenses = () => {
                         fontSize: "0.875rem",
                       }}
                     >
-                      <thead>
+                <thead>
                         <tr
                           style={{
                             backgroundColor: "#f8fafc",
@@ -1975,9 +1954,9 @@ const Expenses = () => {
                           >
                             Total Expenses
                           </th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                         {accountRows.map((item, index) => (
                           <tr
                             key={index}
@@ -2007,7 +1986,7 @@ const Expenses = () => {
                               >
                                 {item.account_code || "—"}
                               </span>
-                            </td>
+                        </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2038,11 +2017,11 @@ const Expenses = () => {
                                 verticalAlign: "middle",
                               }}
                             >
-                              {formatCurrency(item.total)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+                            {formatCurrency(item.total)}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
                       <tfoot>
                         <tr
                           style={{
@@ -2074,9 +2053,9 @@ const Expenses = () => {
                           </td>
                         </tr>
                       </tfoot>
-                    </table>
-                  </div>
-                </div>
+              </table>
+            </div>
+          </div>
               );
             })()}
 
@@ -2120,7 +2099,7 @@ const Expenses = () => {
                     className="fas fa-arrow-down"
                     style={{ color: "#fff", fontSize: "0.95rem" }}
                   />
-                </div>
+        </div>
                 <div>
                   <h5
                     style={{
@@ -2508,9 +2487,9 @@ const Expenses = () => {
                           >
                             Status
                           </th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                </tr>
+              </thead>
+              <tbody>
                         {currentTransactions.map((transaction, index) => (
                           <tr
                             key={transaction.id}
@@ -2537,7 +2516,7 @@ const Expenses = () => {
                               }}
                             >
                               {startIndex + index + 1}
-                            </td>
+                    </td>
                             <td
                               className="je-col-actions text-center"
                               style={{ padding: "0.75rem 1rem" }}
@@ -2615,9 +2594,9 @@ const Expenses = () => {
                                 }}
                                 title={transaction.account_name}
                               >
-                                {transaction.account_name}
-                              </div>
-                            </td>
+                          {transaction.account_name}
+                        </div>
+                      </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2630,7 +2609,7 @@ const Expenses = () => {
                               title={transaction.supplier_name || "—"}
                             >
                               {transaction.supplier_name || "—"}
-                            </td>
+                      </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2689,18 +2668,18 @@ const Expenses = () => {
                                 tabIndex={0}
                                 title={formatCurrency(transaction.amount)}
                               >
-                                {formatCurrency(transaction.amount)}
+                          {formatCurrency(transaction.amount)}
                               </span>
-                            </td>
+                      </td>
                             <td style={{ padding: "0.75rem 1rem" }}>
-                              {transaction.status && (
-                                <span
-                                  className={`badge bg-${getStatusBadge(transaction.status)}`}
-                                >
-                                  {transaction.status}
-                                </span>
-                              )}
-                            </td>
+                        {transaction.status && (
+                          <span
+                            className={`badge bg-${getStatusBadge(transaction.status)}`}
+                          >
+                            {transaction.status}
+                          </span>
+                        )}
+                      </td>
                           </tr>
                         ))}
                       </tbody>
@@ -2722,7 +2701,7 @@ const Expenses = () => {
                               }}
                             >
                               Total
-                            </td>
+                      </td>
                             <td
                               style={{
                                 padding: "0.875rem 1rem",
@@ -2732,17 +2711,17 @@ const Expenses = () => {
                                 fontSize: "0.9375rem",
                               }}
                             >
-                              {formatCurrency(totalExpenses)}
-                            </td>
+                        {formatCurrency(totalExpenses)}
+                    </td>
                             <td style={{ padding: "0.875rem 1rem" }} />
-                          </tr>
-                        </tfoot>
-                      )}
-                    </table>
-                  </div>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
                 </>
               )}
-            </div>
+        </div>
 
             {!loading && filteredTransactions.length > 0 && (
               <div
@@ -3088,25 +3067,25 @@ const Expenses = () => {
                 </div>
               </div>
             )}
-          </div>
+      </div>
 
-          {showForm && (
-            <ExpenseFormModal
-              formData={formData}
-              setFormData={setFormData}
-              expenseAccounts={expenseAccounts}
-              cashAccounts={cashAccounts}
-              suppliers={suppliers}
-              onSubmit={handleSaveExpense}
-              onClose={resetForm}
+      {showForm && (
+        <ExpenseFormModal
+          formData={formData}
+          setFormData={setFormData}
+          expenseAccounts={expenseAccounts}
+          cashAccounts={cashAccounts}
+          suppliers={suppliers}
+          onSubmit={handleSaveExpense}
+          onClose={resetForm}
               submitting={actionLock}
-            />
-          )}
-          {showViewModal && selectedTransaction && (
-            <ExpenseViewModal
-              transaction={selectedTransaction}
-              onClose={() => setShowViewModal(false)}
-            />
+        />
+      )}
+      {showViewModal && selectedTransaction && (
+        <ExpenseViewModal
+          transaction={selectedTransaction}
+          onClose={() => setShowViewModal(false)}
+        />
           )}
           {numberViewModal.show && (
             <ExpenseNumberViewModal
@@ -3717,16 +3696,16 @@ const ExpenseViewModal = ({ transaction, onClose }) => {
                   <div className="bg-white border rounded-3 p-3 h-100">
                     <div className="small text-muted fw-semibold mb-1">
                       Total Amount
-                    </div>
+                </div>
                     <div
                       className="fw-bold text-danger"
                       style={{ fontSize: "1.25rem" }}
                     >
                       {formatCurrency(transaction.amount)}
-                    </div>
-                  </div>
                 </div>
               </div>
+                </div>
+                </div>
               <div className="bg-white border rounded-3 p-3 mb-3">
                 <div className="fw-semibold mb-2">Transaction Information</div>
                 <div className="row g-2">
@@ -3734,27 +3713,27 @@ const ExpenseViewModal = ({ transaction, onClose }) => {
                     <div className="small text-muted fw-semibold">Date</div>
                     <div className="fw-semibold">
                       {formatDate(transaction.date)}
-                    </div>
-                  </div>
+              </div>
+              </div>
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">
                       Reference
-                    </div>
+                  </div>
                     <div className="fw-semibold">
                       {transaction.reference || "—"}
-                    </div>
-                  </div>
-                  {transaction.status && (
+                </div>
+              </div>
+              {transaction.status && (
                     <div className="col-12 col-md-6">
                       <div className="small text-muted fw-semibold">Status</div>
-                      <span
-                        className={`badge bg-${transaction.status === "paid" ? "success" : "info"}`}
-                      >
-                        {transaction.status}
-                      </span>
-                    </div>
-                  )}
+                  <span
+                    className={`badge bg-${transaction.status === "paid" ? "success" : "info"}`}
+                  >
+                    {transaction.status}
+                  </span>
                 </div>
+              )}
+            </div>
               </div>
               <div className="bg-white border rounded-3 p-3 mb-3">
                 <div className="fw-semibold mb-2">Parties & Account</div>
