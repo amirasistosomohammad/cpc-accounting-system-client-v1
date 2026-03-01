@@ -15,7 +15,6 @@ import {
   FaChartBar,
   FaChartPie,
   FaPlus,
-  FaExclamationTriangle,
   FaClock,
   FaEye,
   FaCalendarAlt,
@@ -252,7 +251,7 @@ const AdminDashboard = ({ variant = "admin" }) => {
 
   if (authLoading || loading || !user || !dashboardData) return <Preloader text="Loading dashboard..." />;
 
-  const { overview, recentTransactions, monthlyData: rawMonthly, incomeExpensePie: rawPie, topAccounts, topClients, topSuppliers, alerts } = dashboardData;
+  const { overview, recentTransactions, monthlyData: rawMonthly, incomeExpensePie: rawPie, topAccounts, topClients, topSuppliers } = dashboardData;
   const monthlyData = (rawMonthly || []).map((d) => ({ ...d, monthLabel: d.monthLabel || (d.month ? new Date(d.month + "-01").toLocaleDateString("en-US", { month: "short", year: "2-digit" }) : "") }));
   const incomeExpensePie = rawPie?.length > 0 ? rawPie : [ { name: "Income", value: overview.totalIncome, fill: "#198754" }, { name: "Expenses", value: overview.totalExpenses, fill: "#dc3545" } ].filter((d) => d.value > 0);
 
@@ -303,21 +302,6 @@ const AdminDashboard = ({ variant = "admin" }) => {
         </div>
 
         <div key={contentKey} className="fadeIn">
-        {/* Alerts */}
-        {(alerts.overdueInvoices > 0 || alerts.overdueBills > 0 || alerts.lowCashAccounts > 0 || alerts.unbalancedEntries > 0) && (
-          <div className="mb-4" style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-            <div style={{ ...REPORT_HEADER_STYLE, background: "linear-gradient(180deg, #b45309 0%, #92400e 100%)" }}>
-              <h6 className="mb-0 text-white d-flex align-items-center gap-2"><FaExclamationTriangle /> Alerts & notifications</h6>
-                </div>
-            <div className="p-3 d-flex flex-wrap gap-2">
-              {alerts.overdueInvoices > 0 && <span className="badge bg-danger px-3 py-2"><FaClock className="me-1" /> {alerts.overdueInvoices} Overdue invoices</span>}
-              {alerts.overdueBills > 0 && <span className="badge bg-danger px-3 py-2"><FaClock className="me-1" /> {alerts.overdueBills} Overdue bills</span>}
-              {alerts.lowCashAccounts > 0 && <span className="badge bg-warning text-dark px-3 py-2"><FaExclamationTriangle className="me-1" /> {alerts.lowCashAccounts} Low cash accounts</span>}
-              {alerts.unbalancedEntries > 0 && <span className="badge bg-warning text-dark px-3 py-2"><FaExclamationTriangle className="me-1" /> {alerts.unbalancedEntries} Unbalanced entries</span>}
-            </div>
-          </div>
-        )}
-
         {/* KPI cards – corporate greyish style, smooth hover transition, click to view full number */}
         <style>{`
           .dashboard-kpi-card {

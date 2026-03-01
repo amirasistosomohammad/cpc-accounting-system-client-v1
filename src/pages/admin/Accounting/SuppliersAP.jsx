@@ -1381,7 +1381,7 @@ const SuppliersAP = () => {
                     {initialLoading
                       ? "..."
                       : abbreviateNumber(suppliers.length, false)}
-                  </div>
+            </div>
                   <div
                     className="text-xxs mt-1"
                     style={{
@@ -1392,8 +1392,8 @@ const SuppliersAP = () => {
                   >
                     <i className="fas fa-info-circle me-1"></i>Click to view
                     full number
-                  </div>
-                </div>
+          </div>
+        </div>
                 <div className="col-auto flex-shrink-0 ms-2">
                   <i
                     className="fas fa-truck"
@@ -1403,11 +1403,11 @@ const SuppliersAP = () => {
                       fontSize: "clamp(1rem, 3vw, 2rem)",
                     }}
                   ></i>
-                </div>
-              </div>
             </div>
           </div>
         </div>
+            </div>
+          </div>
         <div className="col-6 col-md-3">
           <div
             className="card stats-card h-100 shadow-sm"
@@ -1451,7 +1451,7 @@ const SuppliersAP = () => {
                     }}
                   >
                     {initialLoading ? "..." : abbreviateNumber(totalAP, true)}
-                  </div>
+        </div>
                   <div
                     className="text-xxs mt-1"
                     style={{
@@ -1919,9 +1919,9 @@ const SuppliersAP = () => {
                       >
                         Total AP
                       </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                     {suppliersCurrent.map((supplier, index) => (
                       <tr key={supplier.id} className="align-middle">
                         <td
@@ -1929,7 +1929,7 @@ const SuppliersAP = () => {
                           style={{ color: "var(--text-primary)" }}
                         >
                           {suppliersStartIndex + index + 1}
-                        </td>
+                      </td>
                         <td className="text-center je-col-actions">
                           <div className="d-flex justify-content-center gap-1">
                             <button
@@ -2028,9 +2028,9 @@ const SuppliersAP = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
             )}
           </div>
           {!loading && filteredSuppliers.length > 0 && (
@@ -2307,9 +2307,9 @@ const SuppliersAP = () => {
                       >
                         Status
                       </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                  </tr>
+                </thead>
+                <tbody>
                     {billsCurrent.map((bill, index) => (
                       <tr key={bill.id} className="align-middle">
                         <td
@@ -2317,7 +2317,7 @@ const SuppliersAP = () => {
                           style={{ color: "var(--text-primary)" }}
                         >
                           {billsStartIndex + index + 1}
-                        </td>
+                      </td>
                         <td className="text-center je-col-actions">
                           <div className="d-flex justify-content-center gap-1">
                             <button
@@ -2529,9 +2529,9 @@ const SuppliersAP = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
             )}
           </div>
           {!loading && filteredBills.length > 0 && (
