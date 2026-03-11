@@ -850,6 +850,69 @@ footer small {
   box-shadow: 0 4px 12px rgba(51, 108, 53, 0.3);
 }
 
+/* Convert to Expense Button - solid blue color matching system */
+.convert-to-expense-btn {
+  background-color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1.25rem !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(12, 32, 63, 0.25) !important;
+  font-weight: 600 !important;
+}
+
+.convert-to-expense-btn:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover) !important;
+  border-color: var(--btn-primary-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(12, 32, 63, 0.35) !important;
+}
+
+.convert-to-expense-btn:active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(12, 32, 63, 0.25) !important;
+}
+
+.convert-to-expense-btn:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.convert-to-expense-submit-btn {
+  background-color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1.25rem !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 2px 8px rgba(12, 32, 63, 0.25) !important;
+  font-weight: 600 !important;
+}
+
+.convert-to-expense-submit-btn:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover) !important;
+  border-color: var(--btn-primary-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(12, 32, 63, 0.35) !important;
+}
+
+.convert-to-expense-submit-btn:active:not(:disabled) {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(12, 32, 63, 0.25) !important;
+}
+
+.convert-to-expense-submit-btn:disabled {
+  background-color: #d5dbe6 !important;
+  border-color: #c4ccd9 !important;
+  color: #6b738a !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* Breadcrumb */
 .breadcrumb {
   background-color: transparent;

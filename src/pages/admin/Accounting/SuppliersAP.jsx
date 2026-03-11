@@ -29,7 +29,7 @@ const SuppliersAP = () => {
   const { request, isAdmin } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [bills, setBills] = useState([]);
-  const [expenseAccounts, setExpenseAccounts] = useState([]);
+  const [billAccounts, setBillAccounts] = useState([]); // Expense and Asset accounts for bills
   const [cashAccounts, setCashAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -64,6 +64,8 @@ const SuppliersAP = () => {
   const [showBillForm, setShowBillForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showConvertToExpenseModal, setShowConvertToExpenseModal] = useState(false);
+  const [showEditConversionModal, setShowEditConversionModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [selectedBill, setSelectedBill] = useState(null);
   const [editingSupplier, setEditingSupplier] = useState(null);
@@ -71,6 +73,9 @@ const SuppliersAP = () => {
   const [savingSupplier, setSavingSupplier] = useState(false);
   const [savingBill, setSavingBill] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [convertingBill, setConvertingBill] = useState(false);
+  const [editingConversion, setEditingConversion] = useState(false);
+  const [expenseAccounts, setExpenseAccounts] = useState([]);
   const [authCodeModal, setAuthCodeModal] = useState({
     show: false,
     type: null,
@@ -109,10 +114,17 @@ const SuppliersAP = () => {
     notes: "",
   });
 
+  const [convertToExpenseForm, setConvertToExpenseForm] = useState({
+    expense_account_id: "",
+  });
+  const [editConversionForm, setEditConversionForm] = useState({
+    expense_account_id: "",
+  });
+
   useEffect(() => {
     fetchSuppliers();
     fetchBills();
-    fetchExpenseAccounts();
+    fetchBillAccounts();
     fetchCashAccounts();
   }, []);
 
@@ -175,9 +187,40 @@ const SuppliersAP = () => {
     }
   };
 
+  const fetchBillAccounts = async () => {
+    try {
+      // Load expense and asset accounts for bills
+      // Asset accounts (e.g., "Advances to Suppliers", "Prepaid Expenses") are needed for advance payments
+      // Expense accounts are for regular bills
+      const data = await request(
+        "/accounting/chart-of-accounts-list?active_only=true",
+      );
+      const all = Array.isArray(data) ? data : data?.data || [];
+      const list = all.filter((acc) => {
+        // Include expense accounts
+        if (acc.account_type_category === "expense") return true;
+        // Include asset accounts (for advance payments, prepaid expenses, work in progress)
+        if (acc.account_type_category === "asset") return true;
+        // Legacy support: include accounts without category but with expense types
+        if (!acc.account_type_category) {
+          if (
+            acc.account_type === "OPERATING_EXPENSES" ||
+            acc.account_type === "COST_OF_SERVICES"
+          )
+            return true;
+        }
+        return false;
+      });
+      setBillAccounts(list);
+    } catch (error) {
+      console.error("Error fetching bill accounts:", error);
+      setBillAccounts([]);
+    }
+  };
+
   const fetchExpenseAccounts = async () => {
     try {
-      // Same as Journal Entries: load all active COA then filter (ensures dropdown populates)
+      // Load only expense accounts for conversion
       const data = await request(
         "/accounting/chart-of-accounts-list?active_only=true",
       );
@@ -497,6 +540,103 @@ const SuppliersAP = () => {
     }
 
     setAuthCodeModal({ show: true, type: "bill", entity: bill, error: null });
+  };
+
+  const handleConvertToExpense = async () => {
+    if (!selectedBill) return;
+
+    if (!convertToExpenseForm.expense_account_id) {
+      showToast.error("Please select an expense account");
+      return;
+    }
+
+    try {
+      setConvertingBill(true);
+      showAlert.loading("Converting bill to expense...");
+      
+      await request(`/accounting/bills/${selectedBill.id}/convert-to-expense`, {
+        method: "POST",
+        body: JSON.stringify({
+          expense_account_id: convertToExpenseForm.expense_account_id,
+        }),
+      });
+
+      showAlert.close();
+      showToast.success("Bill converted to expense successfully");
+      
+      // Refresh data
+      await fetchBills();
+      if (ledgerSupplierId) await fetchLedgerPayments(ledgerSupplierId);
+      
+      // Close modals and reset form
+      setShowConvertToExpenseModal(false);
+      setConvertToExpenseForm({ expense_account_id: "" });
+      setShowViewModal(false);
+      
+      // Refresh the selected bill
+      const updatedBill = await request(`/accounting/bills/${selectedBill.id}`);
+      setSelectedBill(updatedBill);
+    } catch (error) {
+      showAlert.close();
+      showToast.error(error?.message || "Failed to convert bill to expense");
+    } finally {
+      setConvertingBill(false);
+    }
+  };
+
+  const handleOpenConvertModal = async () => {
+    await fetchExpenseAccounts();
+    setShowConvertToExpenseModal(true);
+  };
+
+  const handleEditConversion = async () => {
+    if (!selectedBill) return;
+
+    if (!editConversionForm.expense_account_id) {
+      showToast.error("Please select an expense account");
+      return;
+    }
+
+    try {
+      setEditingConversion(true);
+      showAlert.loading("Updating conversion...");
+      
+      await request(`/accounting/bills/${selectedBill.id}/edit-conversion`, {
+        method: "POST",
+        body: JSON.stringify({
+          expense_account_id: editConversionForm.expense_account_id,
+        }),
+      });
+
+      showAlert.close();
+      showToast.success("Conversion updated successfully");
+      
+      // Refresh data
+      await fetchBills();
+      if (ledgerSupplierId) await fetchLedgerPayments(ledgerSupplierId);
+      
+      // Close modals and reset form
+      setShowEditConversionModal(false);
+      setEditConversionForm({ expense_account_id: "" });
+      setShowViewModal(false);
+      
+      // Refresh the selected bill
+      const updatedBill = await request(`/accounting/bills/${selectedBill.id}`);
+      setSelectedBill(updatedBill);
+    } catch (error) {
+      showAlert.close();
+      showToast.error(error?.message || "Failed to update conversion");
+    } finally {
+      setEditingConversion(false);
+    }
+  };
+
+  const handleOpenEditConversionModal = async () => {
+    await fetchExpenseAccounts();
+    // Pre-select current expense account if available
+    const currentExpenseAccountId = selectedBill?.converted_expense_account_id || selectedBill?.convertedExpenseAccountId;
+    setEditConversionForm({ expense_account_id: currentExpenseAccountId || "" });
+    setShowEditConversionModal(true);
   };
 
   const doVoidPayment = async (paymentId, payload) => {
@@ -2322,9 +2462,14 @@ const SuppliersAP = () => {
                           <div className="d-flex justify-content-center gap-1">
                             <button
                               className="btn btn-info btn-sm text-white"
-                              onClick={() => {
-                                setSelectedBill(bill);
-                                setShowViewModal(true);
+                              onClick={async () => {
+                                try {
+                                  const fullBill = await request(`/accounting/bills/${bill.id}`);
+                                  setSelectedBill(fullBill);
+                                  setShowViewModal(true);
+                                } catch (error) {
+                                  showToast.error("Failed to load bill details");
+                                }
                               }}
                               title="View Details"
                               style={{
@@ -3438,7 +3583,7 @@ const SuppliersAP = () => {
           form={billForm}
           setForm={setBillForm}
           suppliers={suppliers}
-          expenseAccounts={expenseAccounts}
+          billAccounts={billAccounts}
           onSubmit={handleSaveBill}
           onClose={resetBillForm}
           saving={savingBill}
@@ -3474,6 +3619,40 @@ const SuppliersAP = () => {
         <BillViewModal
           bill={selectedBill}
           onClose={() => setShowViewModal(false)}
+          onConvertToExpense={handleOpenConvertModal}
+          onEditConversion={handleOpenEditConversionModal}
+        />
+      )}
+
+      {/* Convert to Expense Modal */}
+      {showConvertToExpenseModal && selectedBill && (
+        <ConvertToExpenseModal
+          bill={selectedBill}
+          expenseAccounts={expenseAccounts}
+          form={convertToExpenseForm}
+          setForm={setConvertToExpenseForm}
+          onClose={() => {
+            setShowConvertToExpenseModal(false);
+            setConvertToExpenseForm({ expense_account_id: "" });
+          }}
+          onSubmit={handleConvertToExpense}
+          converting={convertingBill}
+        />
+      )}
+
+      {/* Edit Conversion Modal */}
+      {showEditConversionModal && selectedBill && (
+        <EditConversionModal
+          bill={selectedBill}
+          expenseAccounts={expenseAccounts}
+          form={editConversionForm}
+          setForm={setEditConversionForm}
+          onClose={() => {
+            setShowEditConversionModal(false);
+            setEditConversionForm({ expense_account_id: "" });
+          }}
+          onSubmit={handleEditConversion}
+          editing={editingConversion}
         />
       )}
 
@@ -3732,7 +3911,7 @@ const BillFormModal = ({
   form,
   setForm,
   suppliers,
-  expenseAccounts,
+  billAccounts,
   onSubmit,
   onClose,
   saving = false,
@@ -3909,10 +4088,13 @@ const BillFormModal = ({
                       className="form-label small fw-semibold mb-1"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      Expense Account <span className="text-danger">*</span>
+                      Account <span className="text-danger">*</span>
+                      <small className="text-muted d-block mt-1" style={{ fontSize: "0.75rem" }}>
+                        Select Expense (for regular bills) or Asset (for advance payments, prepaid expenses)
+                      </small>
                     </label>
                     <SearchableAccountSelect
-                      accounts={expenseAccounts}
+                      accounts={billAccounts}
                       value={form.expense_account_id}
                       onChange={(accountId) =>
                         setForm({ ...form, expense_account_id: accountId })
@@ -4563,7 +4745,7 @@ const SupplierViewModal = ({
 };
 
 // Bill View Modal Component - same structure as InvoiceViewModal (Clients/AR)
-const BillViewModal = ({ bill, onClose }) => {
+const BillViewModal = ({ bill, onClose, onConvertToExpense, onEditConversion }) => {
   const [isClosing, setIsClosing] = useState(false);
 
   const formatCurrency = (amount) => {
@@ -4779,13 +4961,13 @@ const BillViewModal = ({ bill, onClose }) => {
                   </div>
                 </div>
               </div>
-              {/* Expense Details */}
+              {/* Account Details */}
               <div className="bg-white border rounded-3 p-3 mb-3">
-                <div className="fw-semibold mb-2">Expense Details</div>
+                <div className="fw-semibold mb-2">Account Details</div>
                 <div className="row g-2">
                   <div className="col-12">
                     <div className="small text-muted fw-semibold">
-                      Expense Account
+                      Account ({bill?.expense_account?.account_type_category === "asset" ? "Asset" : bill?.expense_account?.account_type_category === "expense" ? "Expense" : "N/A"})
                     </div>
                     <div className="fw-semibold">
                       {bill?.expense_account?.account_code} -{" "}
@@ -4805,8 +4987,111 @@ const BillViewModal = ({ bill, onClose }) => {
                   </div>
                 </div>
               </div>
+              {/* Conversion Status */}
+              {bill?.converted_to_expense_at && (
+                <div className="bg-success bg-opacity-10 border border-success rounded-3 p-3 mb-3">
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <div className="fw-semibold text-success" style={{ fontSize: "1rem" }}>
+                      ✓ Converted to Expense
+                    </div>
+                  </div>
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6">
+                      <div className="small text-muted fw-semibold mb-1">Converted On</div>
+                      <div className="small fw-semibold">
+                        {new Date(bill.converted_to_expense_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                    {(() => {
+                      const expenseAccount = bill?.converted_expense_account || bill?.convertedExpenseAccount;
+                      if (expenseAccount) {
+                        return (
+                          <div className="col-12 col-md-6">
+                            <div className="small text-muted fw-semibold mb-1">Expense Account</div>
+                            <div className="small fw-semibold">
+                              {expenseAccount.account_code} - {expenseAccount.account_name}
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Fallback: show ID if account data not loaded
+                      if (bill?.converted_expense_account_id) {
+                        return (
+                          <div className="col-12 col-md-6">
+                            <div className="small text-muted fw-semibold mb-1">Expense Account ID</div>
+                            <div className="small fw-semibold text-warning">
+                              #{bill.converted_expense_account_id} (Details not loaded)
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {(bill?.conversion_journal_entry || bill?.conversionJournalEntry) && (
+                      <div className="col-12 col-md-6">
+                        <div className="small text-muted fw-semibold mb-1">Journal Entry</div>
+                        <div className="small fw-semibold">
+                          {(bill.conversion_journal_entry || bill.conversionJournalEntry)?.reference_number || `#${bill.conversion_journal_entry_id || bill.conversionJournalEntryId}`}
+                        </div>
+                      </div>
+                    )}
+                    {(bill?.conversion_journal_entry_id || bill?.conversionJournalEntryId) && !bill?.conversion_journal_entry && !bill?.conversionJournalEntry && (
+                      <div className="col-12 col-md-6">
+                        <div className="small text-muted fw-semibold mb-1">Journal Entry</div>
+                        <div className="small fw-semibold">#{bill.conversion_journal_entry_id || bill.conversionJournalEntryId}</div>
+                      </div>
+                    )}
+                    {bill?.converted_expense_account_id && !bill?.converted_expense_account && !bill?.convertedExpenseAccount && (
+                      <div className="col-12 col-md-6">
+                        <div className="small text-muted fw-semibold mb-1">Expense Account ID</div>
+                        <div className="small fw-semibold">#{bill.converted_expense_account_id}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="modal-footer border-top bg-white">
+              {/* Convert to Expense Button - Show only if:
+                  1. Bill balance = 0 (fully paid)
+                  2. Bill uses asset account
+                  3. Bill not already converted
+              */}
+              {onConvertToExpense && 
+               parseFloat(bill?.balance || 0) === 0 && 
+               bill?.expense_account?.account_type_category === "asset" &&
+               !bill?.converted_to_expense_at && (
+                <button
+                  type="button"
+                  className="btn fw-semibold me-2 convert-to-expense-btn"
+                  onClick={onConvertToExpense}
+                >
+                  Convert to Expense
+                </button>
+              )}
+              {/* Edit Conversion Button - Show only if:
+                  1. Bill balance = 0 (fully paid)
+                  2. Bill uses asset account
+                  3. Bill is already converted
+              */}
+              {onEditConversion && 
+               parseFloat(bill?.balance || 0) === 0 && 
+               bill?.expense_account?.account_type_category === "asset" &&
+               bill?.converted_to_expense_at && (
+                <button
+                  type="button"
+                  className="btn fw-semibold me-2 convert-to-expense-btn"
+                  onClick={onEditConversion}
+                >
+                  Edit Conversion
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-primary text-white fw-semibold client-submit-btn"
@@ -4815,6 +5100,358 @@ const BillViewModal = ({ bill, onClose }) => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+};
+
+// Edit Conversion Modal Component
+const EditConversionModal = ({ bill, expenseAccounts, form, setForm, onClose, onSubmit, editing }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
+
+  const handleEscapeKey = (e) => {
+    if (e.key === "Escape") handleClose();
+  };
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, []);
+
+  const formatCurrency = (amount) => {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || !isFinite(numAmount)) return "₱0.00";
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    }).format(numAmount);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.expense_account_id) {
+      return;
+    }
+    onSubmit();
+  };
+
+  const currentExpenseAccount = bill?.converted_expense_account || bill?.convertedExpenseAccount;
+
+  return (
+    <Portal>
+      <div
+        className={`modal fade show d-block ${isClosing ? "modal-backdrop-animation exit" : "modal-backdrop-animation"}`}
+        style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1050 }}
+        onClick={handleBackdropClick}
+        tabIndex="-1"
+      >
+        <div
+          className="modal-dialog modal-dialog-centered modal-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className={`modal-content border-0 ${isClosing ? "modal-content-animation exit" : "modal-content-animation"}`}
+            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+          >
+            <div
+              className="modal-header border-0 text-white"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)",
+              }}
+            >
+              <h5 className="modal-title fw-bold">Edit Conversion</h5>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={handleClose}
+                disabled={editing}
+                aria-label="Close"
+              ></button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div
+                className="modal-body bg-light"
+                style={{ maxHeight: "calc(70vh - 120px)", overflowY: "auto", paddingBottom: "2rem", paddingTop: "1rem" }}
+              >
+                <div className="bg-white border rounded-3 p-3 mb-3">
+                  <div className="small fw-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+                    Bill Information
+                  </div>
+                  <div className="row g-2">
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Bill Number</div>
+                      <div className="fw-semibold" style={{ fontSize: "0.9rem", wordBreak: "break-word" }}>{bill?.bill_number || "—"}</div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Amount</div>
+                      <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>{formatCurrency(bill?.total_amount)}</div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Current Account</div>
+                      <div className="fw-semibold d-flex align-items-start gap-1" style={{ fontSize: "0.9rem" }}>
+                        <span style={{ wordBreak: "break-word", flex: "1", minWidth: 0 }}>
+                          {bill?.expense_account?.account_code} - {bill?.expense_account?.account_name}
+                        </span>
+                        <span className="badge bg-info" style={{ flexShrink: 0 }}>Asset</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {currentExpenseAccount && (
+                  <div className="bg-white border rounded-3 p-3 mb-3">
+                    <div className="small fw-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+                      Current Conversion
+                    </div>
+                    <div className="row g-2">
+                      <div className="col-12">
+                        <div className="small text-muted fw-semibold mb-1">Current Expense Account</div>
+                        <div className="small fw-semibold">
+                          {currentExpenseAccount.account_code} - {currentExpenseAccount.account_name}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white border rounded-3 p-3 mb-3">
+                  <div className="small fw-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+                    Update Details
+                  </div>
+                  <div className="small text-muted">
+                    A reversing entry will be created for the current conversion, and a new conversion entry will be created with the selected expense account. All transactions will be preserved for audit purposes.
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded-3 p-3" style={{ position: "relative", zIndex: 1 }}>
+                  <label
+                    className="form-label small fw-semibold mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    New Expense Account <span className="text-danger">*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <SearchableAccountSelect
+                      accounts={expenseAccounts}
+                      value={form.expense_account_id}
+                      onChange={(accountId) =>
+                        setForm({ ...form, expense_account_id: accountId })
+                      }
+                      required
+                      disabled={editing}
+                      placeholder="Search expense account..."
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-top bg-white">
+                <button
+                  type="button"
+                  className="btn btn-secondary fw-semibold"
+                  onClick={handleClose}
+                  disabled={editing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn fw-semibold convert-to-expense-submit-btn"
+                  disabled={editing || !form.expense_account_id}
+                >
+                  {editing ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Updating...
+                    </>
+                  ) : (
+                    "Update Conversion"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </Portal>
+  );
+};
+
+// Convert to Expense Modal Component
+const ConvertToExpenseModal = ({ bill, expenseAccounts, form, setForm, onClose, onSubmit, converting }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) handleClose();
+  };
+
+  const handleEscapeKey = (e) => {
+    if (e.key === "Escape") handleClose();
+  };
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => onClose(), 200);
+  };
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, []);
+
+  const formatCurrency = (amount) => {
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || !isFinite(numAmount)) return "₱0.00";
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    }).format(numAmount);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.expense_account_id) {
+      return;
+    }
+    onSubmit();
+  };
+
+  return (
+    <Portal>
+      <div
+        className={`modal fade show d-block ${isClosing ? "modal-backdrop-animation exit" : "modal-backdrop-animation"}`}
+        style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1050 }}
+        onClick={handleBackdropClick}
+        tabIndex="-1"
+      >
+        <div
+          className="modal-dialog modal-dialog-centered modal-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className={`modal-content border-0 ${isClosing ? "modal-content-animation exit" : "modal-content-animation"}`}
+            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}
+          >
+            <div
+              className="modal-header border-0 text-white"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)",
+              }}
+            >
+              <h5 className="modal-title fw-bold">Convert Bill to Expense</h5>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={handleClose}
+                disabled={converting}
+                aria-label="Close"
+              ></button>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div
+                className="modal-body bg-light"
+                style={{ maxHeight: "calc(70vh - 120px)", overflowY: "auto", paddingBottom: "2rem", paddingTop: "1rem" }}
+              >
+                <div className="bg-white border rounded-3 p-3 mb-3">
+                  <div className="small fw-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+                    Bill Information
+                  </div>
+                  <div className="row g-2">
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Bill Number</div>
+                      <div className="fw-semibold" style={{ fontSize: "0.9rem", wordBreak: "break-word" }}>{bill?.bill_number || "—"}</div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Amount</div>
+                      <div className="fw-semibold" style={{ fontSize: "0.9rem" }}>{formatCurrency(bill?.total_amount)}</div>
+                    </div>
+                    <div className="col-12 col-sm-4">
+                      <div className="small text-muted fw-semibold mb-1">Current Account</div>
+                      <div className="fw-semibold d-flex align-items-start gap-1" style={{ fontSize: "0.9rem" }}>
+                        <span style={{ wordBreak: "break-word", flex: "1", minWidth: 0 }}>
+                          {bill?.expense_account?.account_code} - {bill?.expense_account?.account_name}
+                        </span>
+                        <span className="badge bg-info" style={{ flexShrink: 0 }}>Asset</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded-3 p-3 mb-3">
+                  <div className="small fw-semibold mb-2" style={{ color: "var(--text-muted)" }}>
+                    Conversion Details
+                  </div>
+                  <div className="small text-muted">
+                    A journal entry will be created to transfer this amount from the asset account to the selected expense account. All original transactions will be preserved for audit purposes.
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded-3 p-3" style={{ position: "relative", zIndex: 1 }}>
+                  <label
+                    className="form-label small fw-semibold mb-1"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Expense Account <span className="text-danger">*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <SearchableAccountSelect
+                      accounts={expenseAccounts}
+                      value={form.expense_account_id}
+                      onChange={(accountId) =>
+                        setForm({ ...form, expense_account_id: accountId })
+                      }
+                      required
+                      disabled={converting}
+                      placeholder="Search expense account..."
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-top bg-white">
+                <button
+                  type="button"
+                  className="btn btn-secondary fw-semibold"
+                  onClick={handleClose}
+                  disabled={converting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn fw-semibold convert-to-expense-submit-btn"
+                  disabled={converting || !form.expense_account_id}
+                >
+                  {converting ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Converting...
+                    </>
+                  ) : (
+                    "Convert to Expense"
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

@@ -61,8 +61,16 @@ export default function SearchableAccountSelect({
   const updateDropdownRect = useCallback(() => {
     if (inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 220; // maxHeight from dropdownStyle
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // If not enough space below but enough space above, position dropdown above
+      const shouldPositionAbove = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+      
       setDropdownRect({
-        top: rect.bottom + 4,
+        top: shouldPositionAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
         left: rect.left,
         width: rect.width,
       });

@@ -211,7 +211,13 @@ const Expenses = () => {
         ? billsData
         : billsData?.data || [];
       if (bills.length > 0) {
-        const billTransactions = bills.map((bill) => ({
+        // 1. Direct expense bills (exclude asset accounts like "Advances to Suppliers")
+        const expenseBills = bills.filter((bill) => {
+          const accountCategory = bill.expense_account?.account_type_category;
+          return accountCategory === "expense";
+        });
+        
+        const billTransactions = expenseBills.map((bill) => ({
           id: `bill-${bill.id}`,
           type: "bill",
           date: bill.bill_date,
@@ -229,6 +235,33 @@ const Expenses = () => {
           updated_at: bill.updated_at,
         }));
         allTransactions.push(...billTransactions);
+
+        // 2. Converted bills (asset → expense): use bill's converted_expense_account as source of truth
+        // This avoids double-counting when Edit Conversion creates old + reversal + new journal entries
+        const convertedBills = bills.filter((b) => b.converted_to_expense_at);
+        convertedBills.forEach((bill) => {
+          const convAccount = bill.converted_expense_account || bill.convertedExpenseAccount;
+          if (!convAccount) return;
+          const amt = parseFloat(bill.total_amount) || 0;
+          if (amt <= 0) return;
+          allTransactions.push({
+            id: `bill-conv-${bill.id}`,
+            type: "conversion",
+            date: bill.converted_to_expense_at,
+            account_code: convAccount.account_code || "",
+            account_name: convAccount.account_name || "",
+            supplier_name: bill.supplier?.name || "",
+            amount: amt,
+            description: bill.description || `Converted: Bill ${bill.bill_number}`,
+            reference: bill.bill_number + "-CONV",
+            status: "converted",
+            journal_entry_id: bill.conversion_journal_entry_id || bill.conversionJournalEntryId,
+            created_by_name: bill.created_by_name,
+            updated_by_name: bill.updated_by_name,
+            created_at: bill.converted_to_expense_at,
+            updated_at: bill.converted_to_expense_at,
+          });
+        });
       }
 
       let allJournalEntries = [];
@@ -236,7 +269,7 @@ const Expenses = () => {
       let hasMore = true;
       while (hasMore && page <= 10) {
         const journalData = await request(
-          `/accounting/journal-entries?per_page=50&page=${page}`,
+          `/accounting/journal-entries?per_page=50&page=${page}&include_lines=true`,
         ).catch(() => ({ data: [] }));
         const entries = Array.isArray(journalData)
           ? journalData
@@ -250,49 +283,58 @@ const Expenses = () => {
         }
       }
 
-      // Filter journal entries that have expense accounts in debit lines (dynamic by category)
+      // Filter journal entries that have expense accounts (debit or credit lines)
+      // Use net amount (debit - credit) so reversing entries reduce expense correctly
       allJournalEntries.forEach((entry) => {
         if (entry.lines && Array.isArray(entry.lines)) {
           entry.lines.forEach((line) => {
             const isExpenseAccount =
               line.account && line.account.account_type_category === "expense";
-            if (isExpenseAccount && parseFloat(line.debit_amount) > 0) {
-              const isBillEntry = allTransactions.some(
-                (t) => t.journal_entry_id === entry.id && t.type === "bill",
+            if (!isExpenseAccount) return;
+            const debit = parseFloat(line.debit_amount) || 0;
+            const credit = parseFloat(line.credit_amount) || 0;
+            const netAmount = debit - credit;
+            if (netAmount === 0) return;
+            const isBillEntry = allTransactions.some(
+              (t) => t.journal_entry_id === entry.id && t.type === "bill",
+            );
+            // Exclude original bill entries (BILL-xxx) and ALL conversion entries (BILL-xxx-CONV, BILL-xxx-CONV-REV)
+            // Conversion amounts come from bills (converted_expense_account) to avoid double-counting
+            const isBillReference =
+              entry.reference_number?.startsWith("BILL-") &&
+              !entry.reference_number?.includes("-CONV");
+            const isConversionOrReversal =
+              entry.reference_number?.includes("-CONV");
+            const isInvoiceReference =
+              entry.reference_number?.startsWith("INV-");
+            if (!isBillEntry && !isBillReference && !isConversionOrReversal && !isInvoiceReference) {
+              const existingTransaction = allTransactions.find(
+                (t) =>
+                  t.journal_entry_id === entry.id &&
+                  String(t.account_code || "") ===
+                    String(line.account?.account_code || ""),
               );
-              const isBillReference =
-                entry.reference_number?.startsWith("BILL-");
-              const isInvoiceReference =
-                entry.reference_number?.startsWith("INV-");
-              if (!isBillEntry && !isBillReference && !isInvoiceReference) {
-                const existingTransaction = allTransactions.find(
-                  (t) =>
-                    t.journal_entry_id === entry.id &&
-                    String(t.account_code || "") ===
-                      String(line.account?.account_code || ""),
-                );
-                if (!existingTransaction) {
-                  allTransactions.push({
-                    id: `journal-${entry.id}-${line.id}`,
-                    type: "manual",
-                    date: entry.entry_date,
-                    account_code: line.account.account_code || "",
-                    account_name: line.account.account_name || "",
-                    supplier_name: "",
-                    amount: parseFloat(line.debit_amount) || 0,
-                    description:
-                      line.description ||
-                      entry.description ||
-                      "Manual expense entry",
-                    reference: entry.reference_number || entry.entry_number,
-                    status: null,
-                    journal_entry_id: entry.id,
-                    created_by_name: entry.created_by_name,
-                    updated_by_name: entry.updated_by_name,
-                    created_at: entry.created_at,
-                    updated_at: entry.updated_at,
-                  });
-                }
+              if (!existingTransaction) {
+                allTransactions.push({
+                  id: `journal-${entry.id}-${line.id}`,
+                  type: "manual",
+                  date: entry.entry_date,
+                  account_code: line.account.account_code || "",
+                  account_name: line.account.account_name || "",
+                  supplier_name: "",
+                  amount: netAmount,
+                  description:
+                    line.description ||
+                    entry.description ||
+                    "Manual expense entry",
+                  reference: entry.reference_number || entry.entry_number,
+                  status: null,
+                  journal_entry_id: entry.id,
+                  created_by_name: entry.created_by_name,
+                  updated_by_name: entry.updated_by_name,
+                  created_at: entry.created_at,
+                  updated_at: entry.updated_at,
+                });
               }
             }
           });
@@ -1710,9 +1752,9 @@ const Expenses = () => {
           {/* Expenses by Account — same structure as Income by Account */}
           {Object.keys(expensesByAccount).length > 0 &&
             (() => {
-              const accountRows = Object.values(expensesByAccount).sort(
-                (a, b) => b.total - a.total,
-              );
+              const accountRows = Object.values(expensesByAccount)
+                .filter((row) => (row.total || 0) > 0)
+                .sort((a, b) => b.total - a.total);
               const grandTotal = accountRows.reduce(
                 (sum, r) => sum + (parseFloat(r.total) || 0),
                 0,

@@ -114,8 +114,14 @@ const Income = () => {
         ? invoicesData
         : invoicesData?.data || [];
       if (invoices.length > 0) {
+        // Filter invoices to only include those with revenue accounts (safety check)
+        const revenueInvoices = invoices.filter((invoice) => {
+          const accountCategory = invoice.income_account?.account_type_category;
+          return accountCategory === "revenue";
+        });
+
         // Transform invoices to income transactions (include footprint for view modal)
-        const invoiceTransactions = invoices.map((invoice) => ({
+        const invoiceTransactions = revenueInvoices.map((invoice) => ({
           id: `invoice-${invoice.id}`,
           type: "invoice",
           date: invoice.invoice_date,
@@ -144,7 +150,7 @@ const Income = () => {
 
       while (hasMorePages && currentPage <= 10) {
         const journalData = await request(
-          `/accounting/journal-entries?per_page=50&page=${currentPage}`,
+          `/accounting/journal-entries?per_page=50&page=${currentPage}&include_lines=true`,
         ).catch(() => ({ data: [] }));
         const entries = Array.isArray(journalData)
           ? journalData
@@ -424,31 +430,31 @@ const Income = () => {
       await request("/accounting/journal-entries", {
         method: "POST",
         body: JSON.stringify({
-          entry_date: formData.income_date,
-          description:
-            formData.description || `Income: ${formData.income_account_id}`,
-          reference_number: formData.reference_number || null,
-          lines: [
-            {
-              account_id: parseInt(formData.cash_account_id),
+            entry_date: formData.income_date,
+            description:
+              formData.description || `Income: ${formData.income_account_id}`,
+            reference_number: formData.reference_number || null,
+            lines: [
+              {
+                account_id: parseInt(formData.cash_account_id),
               debit_amount:
                 parseFloat(
                   (formData.amount || "").toString().replace(/,/g, "")
                 ) || 0,
-              credit_amount: 0,
-              description: formData.description || "Income received",
-            },
-            {
-              account_id: parseInt(formData.income_account_id),
-              debit_amount: 0,
+                credit_amount: 0,
+                description: formData.description || "Income received",
+              },
+              {
+                account_id: parseInt(formData.income_account_id),
+                debit_amount: 0,
               credit_amount:
                 parseFloat(
                   (formData.amount || "").toString().replace(/,/g, "")
                 ) || 0,
-              description: formData.description || "Income received",
-            },
-          ],
-        }),
+                description: formData.description || "Income received",
+              },
+            ],
+          }),
       });
 
       showToast.success("Income recorded successfully");
@@ -1864,25 +1870,25 @@ const Income = () => {
                 (sum, r) => sum + (parseFloat(r.total) || 0),
                 0,
               );
-              return (
+            return (
+              <div
+                className="mb-3"
+                style={{
+                  backgroundColor: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                  overflow: "hidden",
+                }}
+              >
                 <div
-                  className="mb-3"
                   style={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "6px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      padding: "0.875rem 1.25rem",
+                    padding: "0.875rem 1.25rem",
                       background:
                         "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
+                    borderBottom: "1px solid #334155",
+                  }}
+                >
                     <div
                       style={{
                         display: "flex",
@@ -1890,23 +1896,23 @@ const Income = () => {
                         gap: "0.75rem",
                       }}
                     >
-                      <div
-                        style={{
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "6px",
-                          background: "rgba(255,255,255,0.12)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "6px",
+                        background: "rgba(255,255,255,0.12)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                         <i
                           className="fas fa-chart-pie"
                           style={{ color: "#fff", fontSize: "0.95rem" }}
                         />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <h5
                           style={{
                             margin: 0,
@@ -1916,36 +1922,36 @@ const Income = () => {
                             letterSpacing: "0.01em",
                           }}
                         >
-                          Income by Account
-                        </h5>
+                        Income by Account
+                      </h5>
                         <small
                           style={{
                             color: "rgba(255,255,255,0.75)",
                             fontSize: "0.8rem",
                           }}
                         >
-                          Summary by revenue account
-                        </small>
-                      </div>
+                        Summary by revenue account
+                      </small>
                     </div>
                   </div>
-                  {/* Mobile: card list (stacked) */}
+                </div>
+                {/* Mobile: card list (stacked) */}
                   <div
                     className="d-block d-md-none"
                     style={{ padding: "0.75rem" }}
                   >
-                    {accountRows.map((item, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          padding: "0.875rem 1rem",
+                  {accountRows.map((item, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        padding: "0.875rem 1rem",
                           marginBottom:
                             index < accountRows.length - 1 ? "0.5rem" : 0,
-                          backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "6px",
-                        }}
-                      >
+                        backgroundColor: index % 2 === 0 ? "#fff" : "#fafbfc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "6px",
+                      }}
+                    >
                         <div
                           style={{
                             display: "flex",
@@ -1955,19 +1961,19 @@ const Income = () => {
                             gap: "0.5rem",
                           }}
                         >
-                          <span
-                            style={{
-                              padding: "0.2rem 0.45rem",
-                              borderRadius: "4px",
-                              backgroundColor: "#f1f5f9",
-                              color: "#334155",
-                              fontWeight: 600,
-                              fontSize: "0.8125rem",
-                              fontFamily: "ui-monospace, monospace",
-                            }}
-                          >
-                            {item.account_code || "—"}
-                          </span>
+                        <span
+                          style={{
+                            padding: "0.2rem 0.45rem",
+                            borderRadius: "4px",
+                            backgroundColor: "#f1f5f9",
+                            color: "#334155",
+                            fontWeight: 600,
+                            fontSize: "0.8125rem",
+                            fontFamily: "ui-monospace, monospace",
+                          }}
+                        >
+                          {item.account_code || "—"}
+                        </span>
                           <span
                             style={{
                               fontWeight: 600,
@@ -1976,9 +1982,9 @@ const Income = () => {
                               fontSize: "0.9375rem",
                             }}
                           >
-                            {formatCurrency(item.total)}
-                          </span>
-                        </div>
+                          {formatCurrency(item.total)}
+                        </span>
+                      </div>
                         <div
                           style={{
                             marginTop: "0.5rem",
@@ -1986,8 +1992,8 @@ const Income = () => {
                             fontSize: "0.875rem",
                           }}
                         >
-                          {item.account_name || "—"}
-                        </div>
+                        {item.account_name || "—"}
+                      </div>
                         <div
                           style={{
                             marginTop: "0.25rem",
@@ -1995,22 +2001,22 @@ const Income = () => {
                             color: "#64748b",
                           }}
                         >
-                          {item.count} transaction{item.count !== 1 ? "s" : ""}
-                        </div>
+                        {item.count} transaction{item.count !== 1 ? "s" : ""}
                       </div>
-                    ))}
-                    <div
-                      style={{
-                        marginTop: "0.75rem",
-                        padding: "0.875rem 1rem",
-                        backgroundColor: "#f1f5f9",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "6px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
+                    </div>
+                  ))}
+                  <div
+                    style={{
+                      marginTop: "0.75rem",
+                      padding: "0.875rem 1rem",
+                      backgroundColor: "#f1f5f9",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
                       <span
                         style={{
                           fontWeight: 600,
@@ -2028,98 +2034,98 @@ const Income = () => {
                           fontSize: "0.9375rem",
                         }}
                       >
-                        {formatCurrency(grandTotal)}
-                      </span>
-                    </div>
+                      {formatCurrency(grandTotal)}
+                    </span>
                   </div>
+                </div>
 
-                  {/* Desktop: table */}
+                {/* Desktop: table */}
                   <div
                     className="d-none d-md-block"
                     style={{ overflowX: "auto" }}
                   >
-                    <table
-                      style={{
-                        width: "100%",
-                        borderCollapse: "collapse",
-                        fontSize: "0.875rem",
-                      }}
-                    >
-                      <thead>
-                        <tr
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    <thead>
+                      <tr
+                        style={{
+                          backgroundColor: "#f8fafc",
+                          borderBottom: "2px solid #e2e8f0",
+                        }}
+                      >
+                        <th
                           style={{
-                            backgroundColor: "#f8fafc",
-                            borderBottom: "2px solid #e2e8f0",
+                            padding: "0.75rem 1rem",
+                            textAlign: "left",
+                            fontWeight: 600,
+                            color: "#475569",
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
                           }}
                         >
-                          <th
-                            style={{
-                              padding: "0.75rem 1rem",
-                              textAlign: "left",
-                              fontWeight: 600,
-                              color: "#475569",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            Account Code
-                          </th>
-                          <th
-                            style={{
-                              padding: "0.75rem 1rem",
-                              textAlign: "left",
-                              fontWeight: 600,
-                              color: "#475569",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            Account Name
-                          </th>
-                          <th
-                            style={{
-                              padding: "0.75rem 1rem",
-                              textAlign: "right",
-                              fontWeight: 600,
-                              color: "#475569",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            Count
-                          </th>
-                          <th
-                            style={{
-                              padding: "0.75rem 1rem",
-                              textAlign: "right",
-                              fontWeight: 600,
-                              color: "#475569",
-                              fontSize: "0.75rem",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                            }}
-                          >
-                            Total Income
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {accountRows.map((item, index) => (
-                          <tr
-                            key={index}
-                            style={{
+                          Account Code
+                        </th>
+                        <th
+                          style={{
+                            padding: "0.75rem 1rem",
+                            textAlign: "left",
+                            fontWeight: 600,
+                            color: "#475569",
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Account Name
+                        </th>
+                        <th
+                          style={{
+                            padding: "0.75rem 1rem",
+                            textAlign: "right",
+                            fontWeight: 600,
+                            color: "#475569",
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Count
+                        </th>
+                        <th
+                          style={{
+                            padding: "0.75rem 1rem",
+                            textAlign: "right",
+                            fontWeight: 600,
+                            color: "#475569",
+                            fontSize: "0.75rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          Total Income
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {accountRows.map((item, index) => (
+                        <tr
+                          key={index}
+                          style={{
                               backgroundColor:
                                 index % 2 === 0 ? "#fff" : "#fafbfc",
-                              borderBottom: "1px solid #f1f5f9",
-                              transition: "background-color 0.15s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = "#f1f5f9";
-                            }}
-                            onMouseLeave={(e) => {
+                            borderBottom: "1px solid #f1f5f9",
+                            transition: "background-color 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f1f5f9";
+                          }}
+                          onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor =
                                 index % 2 === 0 ? "#fff" : "#fafbfc";
                             }}
@@ -2130,21 +2136,21 @@ const Income = () => {
                                 verticalAlign: "middle",
                               }}
                             >
-                              <span
-                                style={{
-                                  display: "inline-block",
-                                  padding: "0.25rem 0.5rem",
-                                  borderRadius: "4px",
-                                  backgroundColor: "#f1f5f9",
-                                  color: "#334155",
-                                  fontWeight: 600,
-                                  fontSize: "0.8125rem",
-                                  fontFamily: "ui-monospace, monospace",
-                                }}
-                              >
-                                {item.account_code || "—"}
-                              </span>
-                            </td>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "0.25rem 0.5rem",
+                                borderRadius: "4px",
+                                backgroundColor: "#f1f5f9",
+                                color: "#334155",
+                                fontWeight: 600,
+                                fontSize: "0.8125rem",
+                                fontFamily: "ui-monospace, monospace",
+                              }}
+                            >
+                              {item.account_code || "—"}
+                            </span>
+                          </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2152,8 +2158,8 @@ const Income = () => {
                                 verticalAlign: "middle",
                               }}
                             >
-                              {item.account_name || "—"}
-                            </td>
+                            {item.account_name || "—"}
+                          </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2163,8 +2169,8 @@ const Income = () => {
                                 verticalAlign: "middle",
                               }}
                             >
-                              {item.count}
-                            </td>
+                            {item.count}
+                          </td>
                             <td
                               style={{
                                 padding: "0.75rem 1rem",
@@ -2175,19 +2181,19 @@ const Income = () => {
                                 verticalAlign: "middle",
                               }}
                             >
-                              {formatCurrency(item.total)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr
-                          style={{
-                            backgroundColor: "#f1f5f9",
-                            borderTop: "2px solid #e2e8f0",
-                            fontWeight: 600,
-                          }}
-                        >
+                            {formatCurrency(item.total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr
+                        style={{
+                          backgroundColor: "#f1f5f9",
+                          borderTop: "2px solid #e2e8f0",
+                          fontWeight: 600,
+                        }}
+                      >
                           <td
                             colSpan={3}
                             style={{
@@ -2196,8 +2202,8 @@ const Income = () => {
                               fontSize: "0.875rem",
                             }}
                           >
-                            Total
-                          </td>
+                          Total
+                        </td>
                           <td
                             style={{
                               padding: "0.875rem 1rem",
@@ -2207,15 +2213,15 @@ const Income = () => {
                               fontSize: "0.9375rem",
                             }}
                           >
-                            {formatCurrency(grandTotal)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                          {formatCurrency(grandTotal)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
-              );
-            })()}
+              </div>
+            );
+          })()}
 
           {/* Income Transactions — same corporate style as Income by Account */}
           <div
@@ -3865,7 +3871,7 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                     className="fw-bold"
                     style={{ fontSize: "1.05rem", lineHeight: 1.2 }}
                   >
-                    Income Transaction Details
+                Income Transaction Details
                   </div>
                   <div
                     className="small opacity-75"
@@ -3908,10 +3914,10 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                       style={{ fontSize: "1.25rem" }}
                     >
                       {formatCurrency(transaction.amount)}
-                    </div>
                   </div>
                 </div>
-              </div>
+                  </div>
+                </div>
               <div className="bg-white border rounded-3 p-3 mb-3">
                 <div className="fw-semibold mb-2">Transaction Information</div>
                 <div className="row g-2">
@@ -3919,12 +3925,12 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                     <div className="small text-muted fw-semibold">Date</div>
                     <div className="fw-semibold">
                       {formatDate(transaction.date)}
-                    </div>
+              </div>
                   </div>
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">
                       Reference
-                    </div>
+                </div>
                     <div className="fw-semibold">
                       {transaction.reference || "—"}
                     </div>
@@ -3937,7 +3943,7 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                       >
                         {transaction.status}
                       </span>
-                    </div>
+                  </div>
                   )}
                 </div>
               </div>
@@ -3948,15 +3954,15 @@ const IncomeViewModal = ({ transaction, onClose }) => {
                     <div className="small text-muted fw-semibold">Account</div>
                     <div className="fw-semibold">
                       {transaction.account_code} — {transaction.account_name}
-                    </div>
-                  </div>
+                </div>
+              </div>
                   <div className="col-12 col-md-6">
                     <div className="small text-muted fw-semibold">Client</div>
                     <div className="fw-semibold">
                       {transaction.client_name || "—"}
-                    </div>
                   </div>
                 </div>
+              </div>
               </div>
               {transaction.description && (
                 <div className="bg-white border rounded-3 p-3 mb-3">
